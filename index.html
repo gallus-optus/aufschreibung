@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0061FF">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Aufschreibung">
+  <meta name="description" content="Ernährungs- und Vitalwert-Tracker">
+  <title>Aufschreibung</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       BILDSCHIRM 1: Anmeldung
+       Wird angezeigt wenn kein Dropbox-Token in IndexedDB vorhanden.
+       ============================================================ -->
+  <div id="ansicht-anmeldung" class="ansicht aktiv">
+    <div class="anmeldung-inhalt">
+
+      <!-- App-Logo -->
+      <div class="anmeldung-logo">
+        <div class="logo-quadrat">
+          <span class="logo-buchstabe">A</span>
+        </div>
+      </div>
+
+      <!-- App-Titel -->
+      <h1 class="anmeldung-titel">Aufschreibung</h1>
+      <p class="anmeldung-untertitel">Ernährung und Vitalwerte</p>
+
+      <!-- Anmelde-Knopf -->
+      <button id="knopf-dropbox-anmelden" class="knopf-primaer knopf-dropbox">
+        <svg class="dropbox-icon" viewBox="0 0 24 24" width="22" height="22" fill="white" aria-hidden="true">
+          <path d="M12 14.56l-4.5-2.81L3 14.56 7.5 17.37 12 14.56zm0 0l4.5 2.81L21 14.56l-4.5-2.81L12 14.56zM7.5 6.63L3 9.44l4.5 2.81L12 9.44 7.5 6.63zm4.5 2.81l4.5-2.81L12 3.82 7.5 6.63 12 9.44zm-4.5 5.12l4.5 2.81 4.5-2.81-4.5-2.81-4.5 2.81z"/>
+        </svg>
+        Mit Dropbox verbinden
+      </button>
+
+      <!-- Sicherheitshinweis -->
+      <p class="anmeldung-hinweis">
+        Die App liest und schreibt nur in einem eigenen Ordner
+        <span class="mono-text">Apps/Aufschreibung-PWA/</span>.
+        Andere Dateien werden nicht berührt.
+      </p>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 2: Erst-Import
+       Wird angezeigt wenn Token vorhanden, aber IndexedDB noch leer.
+       ============================================================ -->
+  <div id="ansicht-erstimport" class="ansicht">
+    <div class="standard-header">
+      <h2 class="header-titel">Einrichtung</h2>
+    </div>
+    <div class="ansicht-inhalt">
+
+      <!-- Verbindungs-Status -->
+      <div id="erstimport-konto" class="info-box">
+        Verbunden als <span id="erstimport-email" class="fett">…</span>
+      </div>
+
+      <!-- Warn-Box -->
+      <div class="warn-box">
+        Bitte lade einmalig diese fünf Dateien in Deinen Dropbox-App-Ordner hoch:
+        <span class="mono-text">Apps/Aufschreibung-PWA/</span>
+      </div>
+
+      <!-- Datei-Checkliste -->
+      <div class="datei-liste" id="erstimport-dateiliste">
+        <div class="datei-eintrag" data-datei="01_Stammdaten_Lebensmittel.csv">
+          <span class="datei-status" aria-hidden="true">⏳</span>
+          <span class="datei-name">01_Stammdaten_Lebensmittel.csv</span>
+        </div>
+        <div class="datei-eintrag" data-datei="02_Stammdaten_Eigengerichte.csv">
+          <span class="datei-status" aria-hidden="true">⏳</span>
+          <span class="datei-name">02_Stammdaten_Eigengerichte.csv</span>
+        </div>
+        <div class="datei-eintrag" data-datei="03_Erfassung.csv">
+          <span class="datei-status" aria-hidden="true">⏳</span>
+          <span class="datei-name">03_Erfassung.csv</span>
+        </div>
+        <div class="datei-eintrag" data-datei="04_Vitaldaten.csv">
+          <span class="datei-status" aria-hidden="true">⏳</span>
+          <span class="datei-name">04_Vitaldaten.csv</span>
+        </div>
+        <div class="datei-eintrag" data-datei="05_Konfiguration.json">
+          <span class="datei-status" aria-hidden="true">⏳</span>
+          <span class="datei-name">05_Konfiguration.json</span>
+        </div>
+      </div>
+
+      <button id="knopf-erneut-pruefen" class="knopf-sekundaer">
+        Erneut prüfen
+      </button>
+
+      <!-- Lade-Anzeige beim Download -->
+      <div id="erstimport-ladebalken" class="ladebalken versteckt">
+        <div class="ladebalken-text" id="erstimport-ladetext">Lade Daten…</div>
+        <div class="ladebalken-fortschritt">
+          <div class="ladebalken-fueller" id="erstimport-fueller"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 3: Lebensmittel-Liste
+       ============================================================ -->
+  <div id="ansicht-lebensmittel" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <h2 class="header-titel">Lebensmittel</h2>
+      <button class="header-icon-knopf" aria-label="Optionen" disabled>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+        </svg>
+      </button>
+    </div>
+    <div class="suchfeld-container">
+      <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="search" id="lebensmittel-suche" class="suchfeld" placeholder="Suchen…" autocomplete="off">
+    </div>
+    <div id="lebensmittel-chips" class="chip-reihe" role="list"></div>
+    <div id="lebensmittel-liste" class="eintrags-liste" role="list"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 4: Detail Lebensmittel
+       ============================================================ -->
+  <div id="ansicht-lebensmittel-detail" class="ansicht">
+    <div class="standard-header">
+      <button id="lm-detail-zurueck" class="header-zurueck-knopf" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <h2 id="lm-detail-titel" class="header-titel"></h2>
+    </div>
+    <div id="lm-detail-inhalt" class="ansicht-inhalt"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 5: Gerichte-Liste
+       ============================================================ -->
+  <div id="ansicht-gerichte" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <h2 class="header-titel">Gerichte</h2>
+    </div>
+    <div class="suchfeld-container">
+      <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="search" id="gerichte-suche" class="suchfeld" placeholder="Suchen…" autocomplete="off">
+    </div>
+    <div id="gerichte-chips" class="chip-reihe" role="list"></div>
+    <div id="gerichte-liste" class="eintrags-liste" role="list"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 6: Detail Eigengericht
+       ============================================================ -->
+  <div id="ansicht-gericht-detail" class="ansicht">
+    <div class="standard-header">
+      <button id="eg-detail-zurueck" class="header-zurueck-knopf" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <h2 id="eg-detail-titel" class="header-titel"></h2>
+    </div>
+    <div id="eg-detail-inhalt" class="ansicht-inhalt"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 7: Einstellungen
+       ============================================================ -->
+  <div id="ansicht-einstellungen" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <h2 class="header-titel">Einstellungen</h2>
+    </div>
+    <div id="einstellungen-inhalt" class="ansicht-inhalt">
+
+      <div class="einstellungen-abschnitt">
+        <div class="einstellungen-abschnitt-titel">Konto</div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Verbunden als</span>
+          <span id="einst-email" class="einstellungen-wert">…</span>
+        </div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Speicher in Dropbox</span>
+          <span id="einst-speicher" class="einstellungen-wert">…</span>
+        </div>
+        <button id="knopf-abmelden" class="knopf-gefaehrlich">Von Dropbox abmelden</button>
+      </div>
+
+      <div class="einstellungen-abschnitt">
+        <div class="einstellungen-abschnitt-titel">Synchronisierung</div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Status</span>
+          <span id="einst-online-status" class="einstellungen-wert">…</span>
+        </div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Zuletzt synchronisiert</span>
+          <span id="einst-sync-zeit" class="einstellungen-wert">…</span>
+        </div>
+        <button id="knopf-synchronisieren" class="knopf-sekundaer">Jetzt synchronisieren</button>
+      </div>
+
+      <div class="einstellungen-abschnitt">
+        <div class="einstellungen-abschnitt-titel">Lokale Datenbank</div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Lebensmittel</span>
+          <span id="einst-lm-anzahl" class="einstellungen-wert">…</span>
+        </div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Eigengerichte</span>
+          <span id="einst-eg-anzahl" class="einstellungen-wert">…</span>
+        </div>
+        <button id="knopf-db-neuaufbau" class="knopf-sekundaer">Datenbank neu aufbauen</button>
+      </div>
+
+      <div class="einstellungen-abschnitt">
+        <div class="einstellungen-abschnitt-titel">Über</div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Version</span>
+          <span class="einstellungen-wert">0.1 (Phase B)</span>
+        </div>
+        <div class="einstellungen-reihe">
+          <span class="einstellungen-label">Quelltext</span>
+          <a href="https://github.com/gallus-optus/aufschreibung" class="einstellungen-link" target="_blank" rel="noopener">GitHub-Repository</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       UNTERE TAB-LEISTE (erscheint bei den Haupt-Bildschirmen)
+       ============================================================ -->
+  <nav id="tab-leiste" class="tab-leiste versteckt" role="navigation" aria-label="Hauptnavigation">
+    <button class="tab-knopf aktiv" data-ziel="lebensmittel" aria-label="Lebensmittel">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/>
+        <line x1="9" y1="12" x2="15" y2="12"/>
+        <line x1="9" y1="16" x2="13" y2="16"/>
+      </svg>
+      <span>Lebensmittel</span>
+    </button>
+    <button class="tab-knopf" data-ziel="gerichte" aria-label="Gerichte">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8h1a4 4 0 010 8h-1"/>
+        <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/>
+        <line x1="10" y1="1" x2="10" y2="4"/>
+        <line x1="14" y1="1" x2="14" y2="4"/>
+      </svg>
+      <span>Gerichte</span>
+    </button>
+    <button class="tab-knopf" data-ziel="einstellungen" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      <span>Einstellungen</span>
+    </button>
+  </nav>
+
+  <!-- Globale Fehlermeldungs-Leiste -->
+  <div id="fehler-leiste" class="fehler-leiste versteckt" role="alert"></div>
+
+  <!-- Haupt-JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/dropbox@10.34.0/dist/Dropbox-sdk.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

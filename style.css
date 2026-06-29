@@ -1,0 +1,780 @@
+/* ================================================================
+   CSS-Variablen — zentrale Design-Tokens
+   Durch CSS-Variablen kann später ein Dark-Mode per
+   prefers-color-scheme ergänzt werden, ohne den Code umzubauen.
+   ================================================================ */
+:root {
+  --akzent:        #0061FF;   /* Dropbox-Blau für Hauptaktionen */
+  --akzent-dunkel: #0050D0;   /* Hover-Zustand des Akzents */
+  --hintergrund:   #F5F5F5;   /* Seiten-Hintergrund */
+  --oberflaeche:   #FFFFFF;   /* Karten- und Header-Hintergrund */
+  --border:        #E5E5E5;   /* Trennlinien (0.5px) */
+  --text-primaer:  #1A1A1A;   /* Haupt-Textfarbe */
+  --text-sekundaer:#6B6B6B;   /* Untertitel, Labels */
+  --text-mikro:    #9B9B9B;   /* Hilfstexte, IDs */
+  --fehler:        #D0021B;   /* Fehler, Abmelden-Knopf */
+  --warn-bg:       #FFF8E6;   /* Warnmeldungs-Hintergrund */
+  --warn-border:   #F5A623;   /* Warnmeldungs-Rand */
+  --erfolg:        #27AE60;   /* Grüne Häkchen */
+  --hero-bg:       #EEF4FF;   /* Hero-Bereich Detail-Ansichten */
+
+  --radius-karte:  8px;
+  --radius-phone:  22px;
+  --radius-pill:   999px;
+
+  --abstand-xs:    8px;
+  --abstand-s:     16px;
+  --abstand-m:     24px;
+  --abstand-l:     32px;
+
+  --schrift-mikro: 11px;
+  --schrift-klein: 13px;
+  --schrift-body:  15px;
+  --schrift-titel: 18px;
+  --schrift-gross: 22px;
+  --schrift-held:  36px;
+
+  --header-hoehe:  52px;
+  --tabbar-hoehe:  60px;
+  --tap-min:       44px;      /* Mindestgröße für Touch-Flächen */
+}
+
+/* ================================================================
+   Basis-Reset und Box-Model
+   ================================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;           /* Kein Scrollen auf Body-Ebene */
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+  background: var(--hintergrund);
+  line-height: 1.4;
+}
+
+/* ================================================================
+   Ansichten (Screens) — SPA-Routing
+   Nur die Ansicht mit Klasse "aktiv" wird sichtbar.
+   ================================================================ */
+.ansicht {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--hintergrund);
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.ansicht.aktiv {
+  display: flex;
+}
+
+/* Ansichten mit Tab-Leiste haben Platz für die Tab-Leiste unten */
+.ansicht.mit-tabbar {
+  padding-bottom: var(--tabbar-hoehe);
+}
+
+/* Scrollbarer Inhalt innerhalb einer Ansicht */
+.ansicht-inhalt {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--abstand-s);
+}
+
+/* ================================================================
+   Standard-Header (obere Leiste mit Titel)
+   ================================================================ */
+.standard-header {
+  display: flex;
+  align-items: center;
+  min-height: var(--header-hoehe);
+  background: var(--oberflaeche);
+  border-bottom: 0.5px solid var(--border);
+  padding: 0 var(--abstand-s);
+  flex-shrink: 0;
+  gap: var(--abstand-xs);
+}
+
+.header-titel {
+  flex: 1;
+  font-size: var(--schrift-titel);
+  font-weight: 600;
+  color: var(--text-primaer);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-icon-knopf,
+.header-zurueck-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border: none;
+  background: none;
+  color: var(--akzent);
+  cursor: pointer;
+  border-radius: var(--radius-karte);
+  flex-shrink: 0;
+}
+
+.header-icon-knopf:disabled {
+  color: var(--text-mikro);
+  cursor: default;
+}
+
+/* ================================================================
+   BILDSCHIRM 1: Anmeldung
+   ================================================================ */
+.anmeldung-inhalt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--abstand-l) var(--abstand-m);
+  height: 100%;
+  gap: var(--abstand-s);
+}
+
+.anmeldung-logo {
+  margin-bottom: var(--abstand-xs);
+}
+
+.logo-quadrat {
+  width: 80px;
+  height: 80px;
+  background: var(--akzent);
+  border-radius: var(--radius-phone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-buchstabe {
+  font-size: 44px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.anmeldung-titel {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primaer);
+}
+
+.anmeldung-untertitel {
+  font-size: var(--schrift-body);
+  color: var(--text-sekundaer);
+  margin-top: -8px;
+}
+
+.knopf-primaer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--abstand-xs);
+  min-height: var(--tap-min);
+  padding: 12px var(--abstand-m);
+  border: none;
+  border-radius: var(--radius-karte);
+  font-size: var(--schrift-body);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  max-width: 320px;
+  margin-top: var(--abstand-s);
+}
+
+.knopf-dropbox {
+  background: var(--akzent);
+  color: #FFFFFF;
+}
+
+.knopf-dropbox:active {
+  background: var(--akzent-dunkel);
+}
+
+.dropbox-icon {
+  flex-shrink: 0;
+}
+
+.anmeldung-hinweis {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.5;
+  margin-top: var(--abstand-xs);
+}
+
+/* ================================================================
+   BILDSCHIRM 2: Erst-Import
+   ================================================================ */
+.info-box {
+  background: var(--oberflaeche);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-karte);
+  padding: var(--abstand-s);
+  margin-bottom: var(--abstand-s);
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+}
+
+.warn-box {
+  background: var(--warn-bg);
+  border: 0.5px solid var(--warn-border);
+  border-radius: var(--radius-karte);
+  padding: var(--abstand-s);
+  margin-bottom: var(--abstand-s);
+  font-size: var(--schrift-klein);
+  color: var(--text-primaer);
+  line-height: 1.5;
+}
+
+.datei-liste {
+  background: var(--oberflaeche);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-karte);
+  margin-bottom: var(--abstand-s);
+  overflow: hidden;
+}
+
+.datei-eintrag {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-xs);
+  padding: 12px var(--abstand-s);
+  border-bottom: 0.5px solid var(--border);
+  font-size: var(--schrift-klein);
+}
+
+.datei-eintrag:last-child {
+  border-bottom: none;
+}
+
+.datei-status {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.datei-name {
+  font-family: "Courier New", Courier, monospace;
+  font-size: var(--schrift-mikro);
+  color: var(--text-sekundaer);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ladebalken {
+  background: var(--oberflaeche);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-karte);
+  padding: var(--abstand-s);
+  margin-top: var(--abstand-s);
+}
+
+.ladebalken-text {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+  margin-bottom: var(--abstand-xs);
+}
+
+.ladebalken-fortschritt {
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.ladebalken-fueller {
+  height: 100%;
+  width: 0%;
+  background: var(--akzent);
+  border-radius: var(--radius-pill);
+  transition: width 0.3s ease;
+}
+
+/* ================================================================
+   Knöpfe (Sekundär, Gefährlich)
+   ================================================================ */
+.knopf-sekundaer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 10px var(--abstand-s);
+  width: 100%;
+  border: 1.5px solid var(--akzent);
+  border-radius: var(--radius-karte);
+  background: var(--oberflaeche);
+  color: var(--akzent);
+  font-size: var(--schrift-body);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: var(--abstand-s);
+}
+
+.knopf-sekundaer:active {
+  background: #EEF4FF;
+}
+
+.knopf-gefaehrlich {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  padding: 10px var(--abstand-s);
+  width: 100%;
+  border: 1.5px solid var(--fehler);
+  border-radius: var(--radius-karte);
+  background: var(--oberflaeche);
+  color: var(--fehler);
+  font-size: var(--schrift-body);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: var(--abstand-s);
+}
+
+.knopf-gefaehrlich:active {
+  background: #FFF0F0;
+}
+
+/* ================================================================
+   BILDSCHIRM 3 + 5: Listen (Lebensmittel / Gerichte)
+   ================================================================ */
+.suchfeld-container {
+  position: relative;
+  padding: var(--abstand-xs) var(--abstand-s);
+  background: var(--oberflaeche);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+.suchfeld-icon {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-sekundaer);
+  pointer-events: none;
+}
+
+.suchfeld {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px 8px 38px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--hintergrund);
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.suchfeld:focus {
+  border-color: var(--akzent);
+}
+
+/* Chip-Reihe für Gruppen-Filter */
+.chip-reihe {
+  display: flex;
+  gap: var(--abstand-xs);
+  padding: var(--abstand-xs) var(--abstand-s);
+  overflow-x: auto;
+  background: var(--oberflaeche);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;         /* Firefox: kein Scrollbalken */
+}
+
+.chip-reihe::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--oberflaeche);
+  color: var(--text-sekundaer);
+  font-size: var(--schrift-klein);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chip.aktiv {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* Liste der Einträge */
+.eintrags-liste {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Gruppen-Überschrift innerhalb der Liste */
+.gruppen-header {
+  padding: var(--abstand-xs) var(--abstand-s);
+  font-size: var(--schrift-klein);
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  background: var(--hintergrund);
+  border-bottom: 0.5px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Einzelner Listen-Eintrag */
+.listen-eintrag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  padding: 10px var(--abstand-s);
+  background: var(--oberflaeche);
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  gap: var(--abstand-xs);
+  text-decoration: none;
+  color: inherit;
+}
+
+.listen-eintrag:active {
+  background: var(--hintergrund);
+}
+
+.listen-eintrag-name {
+  flex: 1;
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listen-eintrag-wert {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   BILDSCHIRM 4 + 6: Detail-Ansichten
+   ================================================================ */
+.detail-hero {
+  background: var(--hero-bg);
+  padding: var(--abstand-m) var(--abstand-s);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.detail-hero-kcal {
+  font-size: var(--schrift-held);
+  font-weight: 700;
+  color: var(--akzent);
+  line-height: 1;
+}
+
+.detail-hero-untertitel {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+}
+
+.detail-hero-pille {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--akzent);
+  color: #FFFFFF;
+  font-size: var(--schrift-mikro);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.detail-sektion {
+  background: var(--oberflaeche);
+  border-bottom: 0.5px solid var(--border);
+  margin-top: var(--abstand-s);
+  border-radius: var(--radius-karte);
+  overflow: hidden;
+}
+
+.detail-sektion-titel {
+  padding: 10px var(--abstand-s) 6px;
+  font-size: var(--schrift-klein);
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.naehrwert-reihe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px var(--abstand-s);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.naehrwert-reihe:last-child {
+  border-bottom: none;
+}
+
+.naehrwert-reihe.eingerueckt {
+  padding-left: var(--abstand-m);
+}
+
+.naehrwert-reihe.eingerueckt .naehrwert-label {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+}
+
+.naehrwert-label {
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+}
+
+.naehrwert-wert {
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+  font-weight: 500;
+}
+
+.detail-id {
+  font-family: "Courier New", Courier, monospace;
+  font-size: var(--schrift-mikro);
+  color: var(--text-mikro);
+  padding: 8px var(--abstand-s);
+}
+
+.detail-bemerkung {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+  padding: var(--abstand-xs) var(--abstand-s);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Zutat-Eintrag im Gerichte-Detail (klickbar) */
+.zutat-eintrag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  padding: 8px var(--abstand-s);
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  gap: var(--abstand-xs);
+}
+
+.zutat-eintrag:last-child {
+  border-bottom: none;
+}
+
+.zutat-eintrag:active {
+  background: var(--hintergrund);
+}
+
+.zutat-links {
+  flex: 1;
+  overflow: hidden;
+}
+
+.zutat-lm-id {
+  font-family: "Courier New", Courier, monospace;
+  font-size: var(--schrift-mikro);
+  color: var(--text-mikro);
+  display: block;
+}
+
+.zutat-name {
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zutat-menge {
+  font-size: var(--schrift-klein);
+  color: var(--text-sekundaer);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Warnung bei unvollständiger Berechnung */
+.warn-vollstaendigkeit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--abstand-xs);
+  background: var(--warn-bg);
+  border: 0.5px solid var(--warn-border);
+  border-radius: var(--radius-karte);
+  padding: var(--abstand-xs) var(--abstand-s);
+  font-size: var(--schrift-klein);
+  color: var(--text-primaer);
+  margin: var(--abstand-xs) 0;
+  line-height: 1.4;
+}
+
+/* ================================================================
+   BILDSCHIRM 7: Einstellungen
+   ================================================================ */
+.einstellungen-abschnitt {
+  background: var(--oberflaeche);
+  border-radius: var(--radius-karte);
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+  margin-bottom: var(--abstand-s);
+}
+
+.einstellungen-abschnitt-titel {
+  padding: 8px var(--abstand-s);
+  font-size: var(--schrift-klein);
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--hintergrund);
+}
+
+.einstellungen-reihe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px var(--abstand-s);
+  border-bottom: 0.5px solid var(--border);
+  gap: var(--abstand-s);
+}
+
+.einstellungen-reihe:last-of-type {
+  border-bottom: none;
+}
+
+.einstellungen-label {
+  font-size: var(--schrift-body);
+  color: var(--text-primaer);
+}
+
+.einstellungen-wert {
+  font-size: var(--schrift-body);
+  color: var(--text-sekundaer);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.einstellungen-link {
+  color: var(--akzent);
+  text-decoration: none;
+  font-size: var(--schrift-body);
+}
+
+/* ================================================================
+   Untere Tab-Leiste
+   ================================================================ */
+.tab-leiste {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--tabbar-hoehe);
+  background: var(--oberflaeche);
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  z-index: 100;
+}
+
+.tab-knopf {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--text-mikro);
+  cursor: pointer;
+  padding: 0;
+  font-size: 10px;
+  min-height: var(--tap-min);
+}
+
+.tab-knopf.aktiv {
+  color: var(--akzent);
+}
+
+.tab-knopf span {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ================================================================
+   Hilfsklassen
+   ================================================================ */
+.versteckt {
+  display: none !important;
+}
+
+.fett {
+  font-weight: 600;
+}
+
+.mono-text {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9em;
+}
+
+/* Fehler-Leiste oben */
+.fehler-leiste {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--fehler);
+  color: #FFFFFF;
+  padding: var(--abstand-xs) var(--abstand-s);
+  font-size: var(--schrift-klein);
+  z-index: 200;
+  text-align: center;
+}
+
+/* Leerer-Zustand-Meldung */
+.leerer-zustand {
+  padding: var(--abstand-l) var(--abstand-m);
+  text-align: center;
+  color: var(--text-mikro);
+  font-size: var(--schrift-body);
+}

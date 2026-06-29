@@ -139,8 +139,9 @@ Folgende Dateien werden im Repo erwartet:
 - Suchfeld
 - Filter-Chip-Reihe: "Alle (N)" plus die 6 Standardkategorien
 - Gruppen-Header pro Kategorie
-- Listeneinträge: Name links, EG-ID rechts (NICHT kcal — siehe
-  Designentscheidung Punkt 7 in CLAUDE.md)
+- Listeneinträge: Name links, kcal pro 100g rechts (berechnet, gecacht
+  in IndexedDB als "kcal_pro_100g_berechnet"; bei unvollständiger
+  Berechnung wegen UNBEKANNT-Zutaten mit "*" markiert)
 - Untere Tab-Bar, Tab "Gerichte" aktiv
 
 ### Bildschirm 6 — Detail Eigengericht

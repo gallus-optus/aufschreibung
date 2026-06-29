@@ -1,0 +1,26 @@
+{
+  "name": "Aufschreibung",
+  "short_name": "Aufschreibung",
+  "description": "Ernährungs- und Vitalwert-Tracker",
+  "start_url": "/aufschreibung/",
+  "scope": "/aufschreibung/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0061FF",
+  "orientation": "portrait",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
