@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase B2 — Mockup der PWA "Aufschreibung"</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+/* ============================================================================
+   CSS-Variablen
+   ============================================================================
+   Helle Variante als Default, Dark Mode ueber prefers-color-scheme.
+   Diese Variablen lehnen sich an die Designsprache aus CLAUDE.md an.
+   ============================================================================ */
+:root {
+  --bg-page:        #FAFAFA;
+  --surface-0:      #FFFFFF;
+  --surface-1:      #F5F5F4;
+  --surface-2:      #FFFFFF;
+  --text-primary:   #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-muted:     #999999;
+  --text-accent:    #0061FF;
+  --text-success:   #1D9E75;
+  --text-warning:   #BA7517;
+  --text-danger:    #A32D2D;
+  --bg-accent:      #E6F1FB;
+  --bg-success:     #E1F5EE;
+  --bg-warning:     #FAEEDA;
+  --bg-danger:      #FCEBEB;
+  --border:         #E5E5E5;
+  --border-strong:  #D4D4D4;
+  --border-accent:  #85B7EB;
+  --radius:         8px;
+  --dropbox-blue:   #0061FF;
+  --font-sans:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:      "SF Mono", Monaco, "Courier New", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:        #1A1A1A;
+    --surface-0:      #222222;
+    --surface-1:      #2A2A2A;
+    --surface-2:      #2E2E2E;
+    --text-primary:   #F0F0F0;
+    --text-secondary: #BBBBBB;
+    --text-muted:     #888888;
+    --text-accent:    #5DA9F0;
+    --bg-accent:      #1E3A5C;
+    --bg-success:     #1A3D32;
+    --bg-warning:     #4A3811;
+    --bg-danger:      #4A1F1F;
+    --border:         #3A3A3A;
+    --border-strong:  #4A4A4A;
+  }
+}
+
+/* ============================================================================
+   Grundgerueste
+   ============================================================================ */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 40px 0 12px;
+}
+
+.intro {
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.intro p { margin: 0 0 8px; }
+.intro p:last-child { margin-bottom: 0; }
+.intro strong { color: var(--text-primary); font-weight: 500; }
+
+/* ============================================================================
+   Navigation
+   ============================================================================ */
+.mb-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 24px;
+  justify-content: center;
+  padding: 12px;
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.mb-nav button {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--surface-0);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.mb-nav button:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.mb-nav button.act {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   Phone-Frame
+   ============================================================================ */
+.mb-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 16px;
+}
+
+.mb-phone {
+  width: 340px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.mb-status {
+  background: var(--surface-1);
+  padding: 6px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.mb-status i { font-size: 14px; vertical-align: -2px; }
+
+.mb-head {
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mb-head-title {
+  font-size: 17px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.mb-back {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 20px;
+  padding: 0;
+}
+
+.mb-content {
+  padding: 16px;
+  min-height: 460px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.mb-tabs {
+  display: flex;
+  border-top: 0.5px solid var(--border);
+  background: var(--surface-1);
+}
+
+.mb-tab {
+  flex: 1;
+  padding: 10px 4px;
+  text-align: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.mb-tab.act { color: var(--text-accent); font-weight: 500; }
+.mb-tab i { display: block; font-size: 20px; margin-bottom: 2px; }
+
+/* ============================================================================
+   Erklaerungsbox
+   ============================================================================ */
+.mb-explain {
+  margin: 8px auto 24px;
+  max-width: 540px;
+  padding: 14px 18px;
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.mb-explain b { color: var(--text-primary); font-weight: 500; }
+
+/* ============================================================================
+   Bildschirm 1: Login
+   ============================================================================ */
+.mb-logo {
+  width: 72px;
+  height: 72px;
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-radius: 18px;
+  margin: 24px auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+
+.mb-login-title {
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.mb-login-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 28px;
+}
+
+.mb-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px;
+  background: var(--dropbox-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+
+.mb-login-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 8px;
+}
+
+/* ============================================================================
+   Bildschirm 2: Erst-Import
+   ============================================================================ */
+.mb-info {
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.mb-info i { font-size: 16px; flex-shrink: 0; }
+.mb-info-ok i { color: var(--text-success); }
+.mb-info-warn i { color: var(--text-warning); }
+
+.mb-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.mb-file .ko { color: var(--text-danger); font-size: 14px; }
+.mb-file .ok { color: var(--text-success); font-size: 14px; }
+
+.mb-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--text-primary);
+  color: var(--surface-2);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+/* ============================================================================
+   Bildschirme 3 + 5: Listen-Ansichten
+   ============================================================================ */
+.mb-search {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.mb-search i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.mb-search input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  box-sizing: border-box;
+  font-size: 13px;
+  height: 36px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.mb-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mb-chip {
+  padding: 4px 10px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mb-chip.act {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+}
+
+.mb-group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin: 14px 0 4px;
+  font-weight: 500;
+}
+
+.mb-group:first-child { margin-top: 0; }
+
+.mb-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+}
+
+.mb-item-name {
+  font-size: 13px;
+  flex: 1;
+  padding-right: 8px;
+}
+
+.mb-item-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   Bildschirme 4 + 6: Detail-Ansichten
+   ============================================================================ */
+.mb-hero {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  padding: 18px 16px;
+  margin: -16px -16px 14px;
+  text-align: center;
+}
+
+.mb-hero-kcal {
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.mb-hero-label {
+  font-size: 12px;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.mb-hero-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.4);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.mb-sec { margin-top: 16px; }
+
+.mb-sec-title {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mb-nrow {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
+}
+
+.mb-nrow:last-child { border-bottom: none; }
+.mb-nrow .lab { color: var(--text-secondary); }
+.mb-nrow .val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.mb-nsub { padding-left: 12px; }
+.mb-nsub .lab { color: var(--text-muted); font-size: 12px; }
+.mb-nsub .val {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.mb-zutat {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 12px;
+}
+
+.mb-zutat .lab { flex: 1; }
+.mb-zutat .lm-id {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-right: 8px;
+}
+
+.mb-zutat .val {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   Bildschirm 7: Einstellungen
+   ============================================================================ */
+.mb-sttitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin: 16px 0 4px;
+  font-weight: 500;
+}
+
+.mb-sttitle:first-child { margin-top: 0; }
+
+.mb-strow {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
+}
+
+.mb-strow .lab { color: var(--text-secondary); }
+.mb-strow .val { font-variant-numeric: tabular-nums; }
+
+.mb-stact {
+  padding: 11px 0;
+  color: var(--text-accent);
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.mb-stact.danger { color: var(--text-danger); }
+
+/* ============================================================================
+   Datei-Pfad-Hinweis im Erst-Import
+   ============================================================================ */
+.mb-path {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 8px 0 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<h1>Phase B2 — Mockup der PWA "Aufschreibung"</h1>
+
+<div class="intro">
+<p><strong>Was ist das hier?</strong> Diese Seite zeigt die geplanten Bildschirme der PWA als klickbares Mockup. Sieben Bildschirme, durch die Navigation oben durchklickbar. Layout, Beschriftungen und Bedien-Flow entsprechen der finalen App-Vision aus Phase B2.</p>
+<p><strong>Was ist hier nicht echt?</strong> Daten, Login-Funktion, Berechnungen, Routing — alles statisch. Es ist eine visuelle Referenz, kein lauffähiger Code. Die Beispielwerte (z. B. "Brötchen Panini 80g 250 kcal") sind plausible Stichproben aus den realen Phase-A-Stammdaten.</p>
+<p><strong>Wofür ist es da?</strong> Als verbindliche Designreferenz für den Coder beim Bauen der echten App, und als Diskussionsgrundlage für Anpassungswünsche vor der Implementierung.</p>
+</div>
+
+<h2>Bildschirme durchklicken</h2>
+
+<div class="mb-nav">
+<button data-s="0" class="act">1. Login</button>
+<button data-s="1">2. Erst-Import</button>
+<button data-s="2">3. Lebensmittel</button>
+<button data-s="3">4. Detail LM</button>
+<button data-s="4">5. Gerichte</button>
+<button data-s="5">6. Detail Gericht</button>
+<button data-s="6">7. Einstellungen</button>
+</div>
+
+<div class="mb-screen" data-sid="0">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:41</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-content" style="display: flex; flex-direction: column;">
+<div class="mb-logo"><i class="ti ti-notebook"></i></div>
+<div class="mb-login-title">Aufschreibung</div>
+<div class="mb-login-sub">Ernährung und Vitalwerte</div>
+<button class="mb-login-btn"><i class="ti ti-brand-dropbox"></i> Mit Dropbox verbinden</button>
+<div class="mb-login-info">Die App liest und schreibt nur in einem eigenen Ordner Apps/Aufschreibung-PWA/. Andere Dateien werden nicht berührt.</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Erst-Start.</b> Beim allerersten Öffnen sieht der Nutzer nur diesen Bildschirm. Tippt er auf den blauen Knopf, öffnet sich kurz Dropbox im Browser, der Nutzer bestätigt einmalig den Zugriff, und springt zurück in die App. Danach erscheint nie wieder ein Login — solange der Nutzer die App nicht abmeldet.</div>
+</div>
+
+<div class="mb-screen" data-sid="1" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:42</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><div class="mb-head-title">Einrichtung</div></div>
+<div class="mb-content">
+<div class="mb-info mb-info-ok"><i class="ti ti-check"></i><span>Verbunden als <b style="color:var(--text-primary)">gallus.optus@gmail.com</b></span></div>
+<div class="mb-info mb-info-warn"><i class="ti ti-alert-triangle"></i><span>Dein App-Ordner ist noch leer. Bitte lade einmalig diese fünf Dateien in Deine Dropbox hoch.</span></div>
+<div class="mb-path">Apps/Aufschreibung-PWA/</div>
+<div class="mb-file"><i class="ti ti-x ko"></i> 01_Stammdaten_Lebensmittel.csv</div>
+<div class="mb-file"><i class="ti ti-x ko"></i> 02_Stammdaten_Eigengerichte.csv</div>
+<div class="mb-file"><i class="ti ti-x ko"></i> 03_Erfassung.csv</div>
+<div class="mb-file"><i class="ti ti-x ko"></i> 04_Vitaldaten.csv</div>
+<div class="mb-file"><i class="ti ti-x ko"></i> 05_Konfiguration.json</div>
+<button class="mb-btn"><i class="ti ti-refresh"></i> Erneut prüfen</button>
+</div>
+</div></div>
+<div class="mb-explain"><b>Erst-Import.</b> Findet die App keine Daten im App-Ordner, sagt sie klar was sie braucht. Du lädst die fünf Phase-A-Dateien einmalig per Drag-and-Drop in die Dropbox-Web-Oberfläche oder die Dropbox-Desktop-App hoch, danach "Erneut prüfen". Wenn alle fünf gefunden sind, indexiert die App sie automatisch in die lokale Datenbank (1-2 Sekunden) und springt zur Lebensmittel-Liste.</div>
+</div>
+
+<div class="mb-screen" data-sid="2" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:43</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><div class="mb-head-title">Lebensmittel</div><i class="ti ti-dots-vertical" style="color:var(--text-secondary)"></i></div>
+<div class="mb-content">
+<div class="mb-search"><i class="ti ti-search"></i><input type="text" placeholder="Suchen ..."></div>
+<div class="mb-chips">
+<span class="mb-chip act">Alle (597)</span>
+<span class="mb-chip">Backwaren</span>
+<span class="mb-chip">Fleisch</span>
+<span class="mb-chip">Gemüse</span>
+<span class="mb-chip">Obst</span>
+</div>
+<div class="mb-group">Backwaren, Süßes, Snacks · 84</div>
+<div class="mb-item"><span class="mb-item-name">Brötchen Panini 80g</span><span class="mb-item-meta">250 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Brot Vollkorn</span><span class="mb-item-meta">220 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Croissant Butter</span><span class="mb-item-meta">406 kcal</span></div>
+<div class="mb-group">Fleisch, Wurst, Fisch und Eier · 92</div>
+<div class="mb-item"><span class="mb-item-name">Bacon Würfel</span><span class="mb-item-meta">380 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Hühnerbrust roh</span><span class="mb-item-meta">110 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Lachs geräuchert</span><span class="mb-item-meta">202 kcal</span></div>
+<div class="mb-group">Gemüse, Kräuter, Pilze · 78</div>
+<div class="mb-item"><span class="mb-item-name">Gemüse Sellerie</span><span class="mb-item-meta">21 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Gemüse Zwiebel</span><span class="mb-item-meta">28 kcal</span></div>
+</div>
+<div class="mb-tabs">
+<div class="mb-tab act"><i class="ti ti-apple"></i>Lebensmittel</div>
+<div class="mb-tab"><i class="ti ti-tools-kitchen-2"></i>Gerichte</div>
+<div class="mb-tab"><i class="ti ti-settings"></i>Einstellungen</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Lebensmittel-Liste.</b> Hauptbildschirm im Lebensmittel-Tab. Alle 597 Lebensmittel sind nach Gruppen sortiert, scrollbar. Oben das Suchfeld — Live-Suche, tippst Du "brötch" siehst Du sofort alle Brötchen-Varianten. Die Chip-Reihe darunter filtert nach Gruppe. Antippen eines Eintrags öffnet die Detail-Ansicht (Bildschirm 4).</div>
+</div>
+
+<div class="mb-screen" data-sid="3" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:44</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><button class="mb-back"><i class="ti ti-arrow-left"></i></button><div class="mb-head-title">Brötchen Panini 80g</div></div>
+<div class="mb-content">
+<div class="mb-hero">
+<div class="mb-hero-kcal">250</div>
+<div class="mb-hero-label">kcal pro 100 g</div>
+<div class="mb-hero-badge">Backwaren, Süßes, Snacks</div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Makronährwerte (pro 100 g)</div>
+<div class="mb-nrow"><span class="lab">Eiweiß</span><span class="val">9,1 g</span></div>
+<div class="mb-nrow"><span class="lab">Kohlenhydrate</span><span class="val">48,3 g</span></div>
+<div class="mb-nrow mb-nsub"><span class="lab">davon Zucker</span><span class="val">2,1 g</span></div>
+<div class="mb-nrow"><span class="lab">Fett</span><span class="val">4,2 g</span></div>
+<div class="mb-nrow mb-nsub"><span class="lab">davon gesättigt</span><span class="val">0,7 g</span></div>
+<div class="mb-nrow mb-nsub"><span class="lab">davon ungesättigt</span><span class="val">3,5 g</span></div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Weitere Werte</div>
+<div class="mb-nrow"><span class="lab">Salz</span><span class="val">1,20 g</span></div>
+<div class="mb-nrow"><span class="lab">Ballaststoffe</span><span class="val">3,4 g</span></div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Kennung</div>
+<div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); padding: 8px 0;">LM_0014</div>
+</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Detail-Ansicht Lebensmittel.</b> Alle Nährwerte pro 100 g, übersichtlich gruppiert. Hervorgehoben: die kcal-Zahl als Hero-Element oben — das, was im Alltag am häufigsten gesucht wird. Die "davon"-Werte (Zucker, gesättigtes/ungesättigtes Fett) sind eingerückt, um die Beziehung zur Oberkategorie zu zeigen. Unten die LM-ID — als Profi-Nutzer-Information, hilfreich falls die ID irgendwo zugeordnet werden soll.</div>
+</div>
+
+<div class="mb-screen" data-sid="4" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:45</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><div class="mb-head-title">Gerichte</div><i class="ti ti-dots-vertical" style="color:var(--text-secondary)"></i></div>
+<div class="mb-content">
+<div class="mb-search"><i class="ti ti-search"></i><input type="text" placeholder="Suchen ..."></div>
+<div class="mb-chips">
+<span class="mb-chip act">Alle (221)</span>
+<span class="mb-chip">Hauptgericht</span>
+<span class="mb-chip">Suppe</span>
+<span class="mb-chip">Beilage</span>
+<span class="mb-chip">Soße &amp; Dip</span>
+</div>
+<div class="mb-group">Hauptgericht · 116</div>
+<div class="mb-item"><span class="mb-item-name">Hühnergeschnetzeltes</span><span class="mb-item-meta">183 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Quetschkartoffeln 01</span><span class="mb-item-meta">142 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Quetschkartoffeln 01 (Variante 2)</span><span class="mb-item-meta">156 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Reis-Pfanne mit Ei</span><span class="mb-item-meta">198 kcal</span></div>
+<div class="mb-group">Suppe · 27</div>
+<div class="mb-item"><span class="mb-item-name">Hühnerbrühe 28.10.2020</span><span class="mb-item-meta">42 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Tomatensuppe mit Nudeln</span><span class="mb-item-meta">87 kcal</span></div>
+<div class="mb-group">Beilage · 52</div>
+<div class="mb-item"><span class="mb-item-name">Gurkensalat Chinesisch 01</span><span class="mb-item-meta">68 kcal</span></div>
+<div class="mb-item"><span class="mb-item-name">Reis-Beilage</span><span class="mb-item-meta">130 kcal *</span></div>
+</div>
+<div class="mb-tabs">
+<div class="mb-tab"><i class="ti ti-apple"></i>Lebensmittel</div>
+<div class="mb-tab act"><i class="ti ti-tools-kitchen-2"></i>Gerichte</div>
+<div class="mb-tab"><i class="ti ti-settings"></i>Einstellungen</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Eigengerichte-Liste.</b> Hauptbildschirm im Gerichte-Tab. Die 221 Eigengerichte sind nach den sechs Standardkategorien gruppiert. Wieder Live-Suche und Chip-Filter. Die Anzeige rechts ist hier die <b>berechnete kcal/100g</b> — beim Indexieren einmalig aus den Zutaten errechnet und in IndexedDB gecacht. Ein Stern "*" hinter dem Wert signalisiert, dass mindestens eine Zutat unbekannt war und der Wert daher unvollständig ist. Antippen → Detail-Ansicht (Bildschirm 6).</div>
+</div>
+
+<div class="mb-screen" data-sid="5" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:46</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><button class="mb-back"><i class="ti ti-arrow-left"></i></button><div class="mb-head-title">Quetschkartoffeln 01</div></div>
+<div class="mb-content">
+<div class="mb-hero">
+<div class="mb-hero-kcal">142</div>
+<div class="mb-hero-label">kcal pro 100 g (berechnet)</div>
+<div class="mb-hero-badge">Hauptgericht</div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Berechnete Nährwerte (pro 100 g)</div>
+<div class="mb-nrow"><span class="lab">Eiweiß</span><span class="val">4,2 g</span></div>
+<div class="mb-nrow"><span class="lab">Kohlenhydrate</span><span class="val">18,7 g</span></div>
+<div class="mb-nrow"><span class="lab">Fett</span><span class="val">5,8 g</span></div>
+<div class="mb-nrow"><span class="lab">Salz</span><span class="val">0,42 g</span></div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Endgewicht der Portion</div>
+<div class="mb-nrow"><span class="lab">Gesamt</span><span class="val">990 g</span></div>
+</div>
+<div class="mb-sec">
+<div class="mb-sec-title">Zutaten (6)</div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0123</span>Kartoffel</span><span class="val">840 g</span></div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0234</span>Milch 3,5 %</span><span class="val">150 g</span></div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0099</span>Aufstrich Butter</span><span class="val">30 g</span></div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0145</span>Aufschnitt Schinken</span><span class="val">50 g</span></div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0019</span>Salz</span><span class="val">5 g</span></div>
+<div class="mb-zutat"><span class="lab"><span class="lm-id">LM_0061</span>Gemüse Zwiebel</span><span class="val">100 g</span></div>
+</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Detail-Ansicht Eigengericht.</b> Wie bei Lebensmitteln kcal als Hero, aber mit Zusatz "berechnet" — diese Werte kommen nicht aus einer fixen Spalte, sondern werden aus den Zutaten plus deren Pro-100-g-Werten gerechnet. Wenn später die Stammdaten eines Zutat-Lebensmittels angepasst werden (z. B. kcal der Kartoffel korrigiert), passt sich der Wert hier automatisch an. Die Zutaten-Liste zeigt LM-IDs als Quelle. Antippen einer Zutat → springt zum Detail des Lebensmittels.</div>
+</div>
+
+<div class="mb-screen" data-sid="6" style="display:none">
+<div class="mb-wrap"><div class="mb-phone">
+<div class="mb-status"><span>9:47</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mb-head"><div class="mb-head-title">Einstellungen</div></div>
+<div class="mb-content">
+<div class="mb-sttitle">Konto</div>
+<div class="mb-strow"><span class="lab">Verbunden als</span><span class="val">gallus.optus@gmail.com</span></div>
+<div class="mb-strow"><span class="lab">Speicher in Dropbox</span><span class="val">0,4 MB / 2 GB</span></div>
+<div class="mb-stact danger">Von Dropbox abmelden</div>
+<div class="mb-sttitle">Synchronisierung</div>
+<div class="mb-strow"><span class="lab">Status</span><span class="val" style="color:var(--text-success)">online</span></div>
+<div class="mb-strow"><span class="lab">Zuletzt synchronisiert</span><span class="val">vor 2 Min</span></div>
+<div class="mb-stact">Jetzt synchronisieren</div>
+<div class="mb-sttitle">Lokale Datenbank</div>
+<div class="mb-strow"><span class="lab">Lebensmittel</span><span class="val">597</span></div>
+<div class="mb-strow"><span class="lab">Eigengerichte</span><span class="val">221</span></div>
+<div class="mb-stact">Datenbank neu aufbauen</div>
+<div class="mb-sttitle">Über</div>
+<div class="mb-strow"><span class="lab">Version</span><span class="val">0.1 (Phase B)</span></div>
+</div>
+<div class="mb-tabs">
+<div class="mb-tab"><i class="ti ti-apple"></i>Lebensmittel</div>
+<div class="mb-tab"><i class="ti ti-tools-kitchen-2"></i>Gerichte</div>
+<div class="mb-tab act"><i class="ti ti-settings"></i>Einstellungen</div>
+</div>
+</div></div>
+<div class="mb-explain"><b>Einstellungen-Tab.</b> Vier Abschnitte: Konto (mit Logout-Knopf), Synchronisierung (Status und manueller Refresh), Lokale Datenbank (Statistik und Neuaufbau-Knopf falls etwas hakt), Über (Versions-Info). Bewusst minimal — Phase B braucht nicht mehr. Spätere Phasen ergänzen hier: Mahlzeit-Zeitregeln, Tagesziel, Favoriten-Limit, Konfigurations-Sicherung etc.</div>
+</div>
+
+</div>
+
+<script>
+// ============================================================================
+// Navigations-Logik
+// ============================================================================
+// Beim Klick auf einen Knopf in der Navigation wird der zugehoerige
+// Bildschirm sichtbar gemacht und alle anderen versteckt.
+// ============================================================================
+
+(function() {
+  // Alle Bildschirm-Container sammeln
+  var bildschirme = document.querySelectorAll('.mb-screen');
+  // Alle Navigations-Knoepfe sammeln
+  var knoepfe = document.querySelectorAll('.mb-nav button');
+
+  // Funktion zum Anzeigen genau eines Bildschirms anhand seiner ID
+  function zeigeBildschirm(bildschirmId) {
+    // Alle Bildschirme durchgehen, nur den gewuenschten anzeigen
+    bildschirme.forEach(function(s) {
+      s.style.display = (s.dataset.sid === bildschirmId) ? '' : 'none';
+    });
+    // Aktiv-Markierung im Navigations-Menue setzen
+    knoepfe.forEach(function(b) {
+      if (b.dataset.s === bildschirmId) {
+        b.classList.add('act');
+      } else {
+        b.classList.remove('act');
+      }
+    });
+    // Sanft nach oben scrollen, damit der Nutzer den neuen Bildschirm sieht
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Event-Handler an jeden Navigations-Knopf binden
+  knoepfe.forEach(function(b) {
+    b.addEventListener('click', function() {
+      zeigeBildschirm(b.dataset.s);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

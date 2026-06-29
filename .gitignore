@@ -1,0 +1,14 @@
+# Lokale Entwickler-Werkzeuge und IDE-Konfiguration
+# (maschinenspezifisch, gehoeren nicht ins Repo)
+.claude/
+
+# Abhaengigkeiten (werden in diesem Projekt nicht verwendet)
+node_modules/
+
+# Geheimnisse — niemals committen
+.env
+*.env
+
+# Betriebssystem-Krimskrams
+Thumbs.db
+.DS_Store

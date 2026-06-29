@@ -1,46 +1,96 @@
 /* ================================================================
-   CSS-Variablen — zentrale Design-Tokens
-   Durch CSS-Variablen kann später ein Dark-Mode per
-   prefers-color-scheme ergänzt werden, ohne den Code umzubauen.
+   style.css — Aussehen der "Aufschreibung"-PWA
+
+   Die Farben und Maße stammen aus der verbindlichen Mockup-
+   Spezifikation (Mockups/phase_b2_mockup.html) und der
+   Designsprache in CLAUDE.md.
+
+   Alle Farben sind als CSS-Variablen angelegt. Dadurch kann der
+   Dark Mode (siehe unten, @media prefers-color-scheme) einfach
+   durch Umdefinieren der Variablen funktionieren — der restliche
+   Code bleibt unveraendert.
    ================================================================ */
+
 :root {
-  --akzent:        #0061FF;   /* Dropbox-Blau für Hauptaktionen */
-  --akzent-dunkel: #0050D0;   /* Hover-Zustand des Akzents */
-  --hintergrund:   #F5F5F5;   /* Seiten-Hintergrund */
-  --oberflaeche:   #FFFFFF;   /* Karten- und Header-Hintergrund */
-  --border:        #E5E5E5;   /* Trennlinien (0.5px) */
-  --text-primaer:  #1A1A1A;   /* Haupt-Textfarbe */
-  --text-sekundaer:#6B6B6B;   /* Untertitel, Labels */
-  --text-mikro:    #9B9B9B;   /* Hilfstexte, IDs */
-  --fehler:        #D0021B;   /* Fehler, Abmelden-Knopf */
-  --warn-bg:       #FFF8E6;   /* Warnmeldungs-Hintergrund */
-  --warn-border:   #F5A623;   /* Warnmeldungs-Rand */
-  --erfolg:        #27AE60;   /* Grüne Häkchen */
-  --hero-bg:       #EEF4FF;   /* Hero-Bereich Detail-Ansichten */
+  /* -- Akzent (Dropbox-Blau) ------------------------------------ */
+  --akzent:         #0061FF;   /* Hauptaktion, Login-Knopf */
+  --akzent-aktiv:   #0050D0;   /* gedrueckter Zustand */
+  --text-akzent:    #0061FF;   /* blaue Texte/Icons */
+  --bg-akzent:      #E6F1FB;   /* heller blauer Hintergrund (Hero, Logo) */
+  --border-akzent:  #85B7EB;   /* blauer Rand fuer aktive Chips */
 
-  --radius-karte:  8px;
-  --radius-phone:  22px;
-  --radius-pill:   999px;
+  /* -- Flaechen und Seite --------------------------------------- */
+  --bg-seite:       #FAFAFA;   /* Hintergrund hinter allem */
+  --flaeche:        #FFFFFF;   /* Karten, Header, Inhaltsflaechen */
+  --flaeche-gedaempft: #F5F5F4;/* Suchfeld, dezente Boxen */
 
-  --abstand-xs:    8px;
-  --abstand-s:     16px;
-  --abstand-m:     24px;
-  --abstand-l:     32px;
+  /* -- Texte ---------------------------------------------------- */
+  --text-primaer:   #1A1A1A;   /* Haupttext */
+  --text-sekundaer: #6B6B6B;   /* Labels, Untertitel */
+  --text-gedaempft: #999999;   /* IDs, Hilfstexte */
 
-  --schrift-mikro: 11px;
-  --schrift-klein: 13px;
-  --schrift-body:  15px;
-  --schrift-titel: 18px;
-  --schrift-gross: 22px;
-  --schrift-held:  36px;
+  /* -- Statusfarben (Erfolg, Warnung, Gefahr) ------------------- */
+  --erfolg-text:    #1D9E75;
+  --erfolg-bg:      #E1F5EE;
+  --warn-text:      #BA7517;
+  --warn-bg:        #FAEEDA;
+  --gefahr-text:    #A32D2D;
+  --gefahr-bg:      #FCEBEB;
 
-  --header-hoehe:  52px;
-  --tabbar-hoehe:  60px;
-  --tap-min:       44px;      /* Mindestgröße für Touch-Flächen */
+  /* -- Linien --------------------------------------------------- */
+  --border:         #E5E5E5;
+  --border-stark:   #D4D4D4;
+
+  /* -- Schrift -------------------------------------------------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", Monaco, "Courier New", monospace;
+
+  /* -- Radien --------------------------------------------------- */
+  --radius:       8px;
+  --radius-phone: 22px;
+  --radius-pill:  999px;
+
+  /* -- Abstaende (8px-Grid) ------------------------------------- */
+  --abstand-xs: 8px;
+  --abstand-s:  16px;
+  --abstand-m:  24px;
+  --abstand-l:  32px;
+
+  /* -- Feste Hoehen --------------------------------------------- */
+  --header-hoehe: 52px;
+  --tabbar-hoehe: 60px;
+  --tap-min:      44px;        /* Mindestgroesse fuer Tipp-Flaechen */
+}
+
+/* ----------------------------------------------------------------
+   Dark Mode: wird automatisch aktiv, wenn das Geraet auf dunkles
+   Design eingestellt ist. Nur Farben werden umdefiniert, keine
+   Maße. Das Akzent-Blau bleibt als Markenfarbe erhalten.
+   ---------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-seite:          #1A1A1A;
+    --flaeche:           #222222;
+    --flaeche-gedaempft: #2A2A2A;
+    --text-primaer:      #F0F0F0;
+    --text-sekundaer:    #BBBBBB;
+    --text-gedaempft:    #888888;
+    --text-akzent:       #5DA9F0;
+    --bg-akzent:         #1E3A5C;
+    --border-akzent:     #3A6EA5;
+    --erfolg-text:       #4FC9A0;
+    --erfolg-bg:         #1A3D32;
+    --warn-text:         #E0A858;
+    --warn-bg:           #4A3811;
+    --gefahr-text:       #E08585;
+    --gefahr-bg:         #4A1F1F;
+    --border:            #3A3A3A;
+    --border-stark:      #4A4A4A;
+  }
 }
 
 /* ================================================================
-   Basis-Reset und Box-Model
+   Basis-Reset
    ================================================================ */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -51,40 +101,40 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;           /* Kein Scrollen auf Body-Ebene */
+  overflow: hidden;            /* Kein Scrollen auf Body-Ebene */
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: var(--schrift-body);
+  font-family: var(--font-sans);
+  font-size: 15px;
   color: var(--text-primaer);
-  background: var(--hintergrund);
-  line-height: 1.4;
+  background: var(--bg-seite);
+  line-height: 1.5;
 }
 
 /* ================================================================
-   Ansichten (Screens) — SPA-Routing
-   Nur die Ansicht mit Klasse "aktiv" wird sichtbar.
+   Ansichten (Bildschirme) — eigenes SPA-Routing
+   Nur die Ansicht mit Klasse "aktiv" ist sichtbar.
    ================================================================ */
 .ansicht {
   display: none;
   position: fixed;
   inset: 0;
-  background: var(--hintergrund);
-  overflow: hidden;
+  background: var(--flaeche);
   flex-direction: column;
+  overflow: hidden;
 }
 
 .ansicht.aktiv {
   display: flex;
 }
 
-/* Ansichten mit Tab-Leiste haben Platz für die Tab-Leiste unten */
+/* Ansichten mit unterer Tab-Leiste lassen unten Platz */
 .ansicht.mit-tabbar {
   padding-bottom: var(--tabbar-hoehe);
 }
 
-/* Scrollbarer Inhalt innerhalb einer Ansicht */
+/* Scrollbarer Inhaltsbereich */
 .ansicht-inhalt {
   flex: 1;
   overflow-y: auto;
@@ -93,22 +143,22 @@ body {
 }
 
 /* ================================================================
-   Standard-Header (obere Leiste mit Titel)
+   Standard-Header (obere Titelleiste)
    ================================================================ */
 .standard-header {
   display: flex;
   align-items: center;
   min-height: var(--header-hoehe);
-  background: var(--oberflaeche);
+  background: var(--flaeche);
   border-bottom: 0.5px solid var(--border);
   padding: 0 var(--abstand-s);
   flex-shrink: 0;
-  gap: var(--abstand-xs);
+  gap: 10px;
 }
 
 .header-titel {
   flex: 1;
-  font-size: var(--schrift-titel);
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-primaer);
   white-space: nowrap;
@@ -123,16 +173,25 @@ body {
   justify-content: center;
   width: var(--tap-min);
   height: var(--tap-min);
+  margin: 0 -10px 0 -12px;     /* optische Ausrichtung an den Rand */
   border: none;
   background: none;
-  color: var(--akzent);
+  color: var(--text-sekundaer);
   cursor: pointer;
-  border-radius: var(--radius-karte);
+  border-radius: var(--radius);
   flex-shrink: 0;
 }
 
+.header-zurueck-knopf {
+  color: var(--text-akzent);
+}
+
+.header-icon-knopf {
+  margin: 0 -10px 0 0;
+}
+
 .header-icon-knopf:disabled {
-  color: var(--text-mikro);
+  color: var(--text-gedaempft);
   cursor: default;
 }
 
@@ -146,40 +205,33 @@ body {
   justify-content: center;
   padding: var(--abstand-l) var(--abstand-m);
   height: 100%;
-  gap: var(--abstand-s);
 }
 
-.anmeldung-logo {
-  margin-bottom: var(--abstand-xs);
-}
-
-.logo-quadrat {
-  width: 80px;
-  height: 80px;
-  background: var(--akzent);
-  border-radius: var(--radius-phone);
+.app-logo {
+  width: 72px;
+  height: 72px;
+  background: var(--bg-akzent);
+  color: var(--text-akzent);
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.logo-buchstabe {
-  font-size: 44px;
-  font-weight: 700;
-  color: #FFFFFF;
-  line-height: 1;
+  margin-bottom: var(--abstand-m);
 }
 
 .anmeldung-titel {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--text-primaer);
+  text-align: center;
 }
 
 .anmeldung-untertitel {
-  font-size: var(--schrift-body);
+  font-size: 13px;
   color: var(--text-sekundaer);
-  margin-top: -8px;
+  text-align: center;
+  margin-top: 6px;
+  margin-bottom: var(--abstand-m);
 }
 
 .knopf-primaer {
@@ -188,15 +240,15 @@ body {
   justify-content: center;
   gap: var(--abstand-xs);
   min-height: var(--tap-min);
-  padding: 12px var(--abstand-m);
+  padding: 13px var(--abstand-m);
   border: none;
-  border-radius: var(--radius-karte);
-  font-size: var(--schrift-body);
+  border-radius: var(--radius);
+  font-size: 14px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
   width: 100%;
   max-width: 320px;
-  margin-top: var(--abstand-s);
 }
 
 .knopf-dropbox {
@@ -205,7 +257,7 @@ body {
 }
 
 .knopf-dropbox:active {
-  background: var(--akzent-dunkel);
+  background: var(--akzent-aktiv);
 }
 
 .dropbox-icon {
@@ -213,53 +265,77 @@ body {
 }
 
 .anmeldung-hinweis {
-  font-size: var(--schrift-klein);
-  color: var(--text-sekundaer);
+  font-size: 11px;
+  color: var(--text-gedaempft);
   text-align: center;
   max-width: 300px;
   line-height: 1.5;
-  margin-top: var(--abstand-xs);
+  margin-top: 14px;
 }
 
 /* ================================================================
    BILDSCHIRM 2: Erst-Import
    ================================================================ */
 .info-box {
-  background: var(--oberflaeche);
+  background: var(--flaeche-gedaempft);
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-karte);
-  padding: var(--abstand-s);
-  margin-bottom: var(--abstand-s);
-  font-size: var(--schrift-body);
-  color: var(--text-primaer);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--text-sekundaer);
+  display: flex;
+  gap: var(--abstand-xs);
+  align-items: flex-start;
 }
+
+.info-box .info-symbol {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.info-box.info-ok   { color: var(--text-sekundaer); }
+.info-box.info-ok .info-symbol   { color: var(--erfolg-text); }
 
 .warn-box {
   background: var(--warn-bg);
-  border: 0.5px solid var(--warn-border);
-  border-radius: var(--radius-karte);
-  padding: var(--abstand-s);
-  margin-bottom: var(--abstand-s);
-  font-size: var(--schrift-klein);
+  border: 0.5px solid var(--warn-text);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
   color: var(--text-primaer);
   line-height: 1.5;
+  display: flex;
+  gap: var(--abstand-xs);
+  align-items: flex-start;
+}
+
+.warn-box .info-symbol {
+  flex-shrink: 0;
+  color: var(--warn-text);
+  font-size: 15px;
+}
+
+.pfad-hinweis {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  margin: var(--abstand-xs) 0 6px;
 }
 
 .datei-liste {
-  background: var(--oberflaeche);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-karte);
   margin-bottom: var(--abstand-s);
-  overflow: hidden;
 }
 
 .datei-eintrag {
   display: flex;
   align-items: center;
   gap: var(--abstand-xs);
-  padding: 12px var(--abstand-s);
+  padding: 7px 0;
   border-bottom: 0.5px solid var(--border);
-  font-size: var(--schrift-klein);
+  font-size: 12px;
 }
 
 .datei-eintrag:last-child {
@@ -267,30 +343,28 @@ body {
 }
 
 .datei-status {
-  font-size: 18px;
+  font-size: 14px;
   flex-shrink: 0;
+  width: 18px;
+  text-align: center;
 }
 
 .datei-name {
-  font-family: "Courier New", Courier, monospace;
-  font-size: var(--schrift-mikro);
+  font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--text-sekundaer);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ladebalken {
-  background: var(--oberflaeche);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-karte);
-  padding: var(--abstand-s);
   margin-top: var(--abstand-s);
 }
 
 .ladebalken-text {
-  font-size: var(--schrift-klein);
+  font-size: 12px;
   color: var(--text-sekundaer);
-  margin-bottom: var(--abstand-xs);
+  margin-bottom: 6px;
 }
 
 .ladebalken-fortschritt {
@@ -309,48 +383,33 @@ body {
 }
 
 /* ================================================================
-   Knöpfe (Sekundär, Gefährlich)
+   Knoepfe
    ================================================================ */
-.knopf-sekundaer {
+
+/* Dunkler Voll-Knopf (z. B. "Erneut pruefen") — invertiert
+   automatisch im Dark Mode, weil er die Textfarbe als Hintergrund
+   nimmt. */
+.knopf-dunkel {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-height: var(--tap-min);
-  padding: 10px var(--abstand-s);
+  padding: 11px var(--abstand-s);
   width: 100%;
-  border: 1.5px solid var(--akzent);
-  border-radius: var(--radius-karte);
-  background: var(--oberflaeche);
-  color: var(--akzent);
-  font-size: var(--schrift-body);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--text-primaer);
+  color: var(--flaeche);
+  font-size: 13px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  margin-top: var(--abstand-s);
+  margin-top: 10px;
 }
 
-.knopf-sekundaer:active {
-  background: #EEF4FF;
-}
-
-.knopf-gefaehrlich {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--tap-min);
-  padding: 10px var(--abstand-s);
-  width: 100%;
-  border: 1.5px solid var(--fehler);
-  border-radius: var(--radius-karte);
-  background: var(--oberflaeche);
-  color: var(--fehler);
-  font-size: var(--schrift-body);
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: var(--abstand-s);
-}
-
-.knopf-gefaehrlich:active {
-  background: #FFF0F0;
+.knopf-dunkel:active {
+  opacity: 0.85;
 }
 
 /* ================================================================
@@ -358,49 +417,48 @@ body {
    ================================================================ */
 .suchfeld-container {
   position: relative;
-  padding: var(--abstand-xs) var(--abstand-s);
-  background: var(--oberflaeche);
-  border-bottom: 0.5px solid var(--border);
+  padding: 12px var(--abstand-s) var(--abstand-xs);
+  background: var(--flaeche);
   flex-shrink: 0;
 }
 
 .suchfeld-icon {
   position: absolute;
-  left: 24px;
+  left: 26px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-sekundaer);
+  color: var(--text-gedaempft);
   pointer-events: none;
 }
 
 .suchfeld {
   width: 100%;
   min-height: 38px;
-  padding: 8px 12px 8px 38px;
+  padding: 8px 12px 8px 36px;
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--hintergrund);
-  font-size: var(--schrift-body);
+  border-radius: var(--radius);
+  background: var(--flaeche-gedaempft);
+  font-size: 14px;
+  font-family: inherit;
   color: var(--text-primaer);
   outline: none;
   -webkit-appearance: none;
 }
 
 .suchfeld:focus {
-  border-color: var(--akzent);
+  border-color: var(--border-akzent);
 }
 
-/* Chip-Reihe für Gruppen-Filter */
+/* Chip-Reihe fuer Gruppen-/Kategorie-Filter */
 .chip-reihe {
   display: flex;
-  gap: var(--abstand-xs);
-  padding: var(--abstand-xs) var(--abstand-s);
+  gap: 6px;
+  padding: 0 var(--abstand-s) 12px;
   overflow-x: auto;
-  background: var(--oberflaeche);
-  border-bottom: 0.5px solid var(--border);
+  background: var(--flaeche);
   flex-shrink: 0;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;         /* Firefox: kein Scrollbalken */
+  scrollbar-width: none;
 }
 
 .chip-reihe::-webkit-scrollbar {
@@ -411,65 +469,66 @@ body {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
-  min-height: 30px;
+  min-height: 28px;
   padding: 4px 12px;
-  border: 1px solid var(--border);
+  border: 0.5px solid var(--border);
   border-radius: var(--radius-pill);
-  background: var(--oberflaeche);
+  background: var(--flaeche-gedaempft);
   color: var(--text-sekundaer);
-  font-size: var(--schrift-klein);
+  font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .chip.aktiv {
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: #FFFFFF;
+  background: var(--bg-akzent);
+  border-color: var(--border-akzent);
+  color: var(--text-akzent);
   font-weight: 600;
 }
 
-/* Liste der Einträge */
+/* Liste der Eintraege */
 .eintrags-liste {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  background: var(--flaeche);
+  padding: 0 var(--abstand-s) var(--abstand-s);
 }
 
-/* Gruppen-Überschrift innerhalb der Liste */
+/* Gruppen-Ueberschrift (schlichter Grossbuchstaben-Text) */
 .gruppen-header {
-  padding: var(--abstand-xs) var(--abstand-s);
-  font-size: var(--schrift-klein);
+  padding: 14px 0 4px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-sekundaer);
-  background: var(--hintergrund);
-  border-bottom: 0.5px solid var(--border);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.5px;
 }
 
-/* Einzelner Listen-Eintrag */
+.eintrags-liste > .gruppen-header:first-child {
+  padding-top: 4px;
+}
+
+/* Einzelner Listen-Eintrag (flache Zeile mit Trennlinie) */
 .listen-eintrag {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: var(--tap-min);
-  padding: 10px var(--abstand-s);
-  background: var(--oberflaeche);
+  padding: 9px 0;
   border-bottom: 0.5px solid var(--border);
   cursor: pointer;
   gap: var(--abstand-xs);
-  text-decoration: none;
-  color: inherit;
 }
 
 .listen-eintrag:active {
-  background: var(--hintergrund);
+  background: var(--flaeche-gedaempft);
 }
 
 .listen-eintrag-name {
   flex: 1;
-  font-size: var(--schrift-body);
+  font-size: 13px;
   color: var(--text-primaer);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -477,120 +536,139 @@ body {
 }
 
 .listen-eintrag-wert {
-  font-size: var(--schrift-klein);
+  font-size: 12px;
   color: var(--text-sekundaer);
   white-space: nowrap;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ================================================================
    BILDSCHIRM 4 + 6: Detail-Ansichten
    ================================================================ */
+
+/* Scroll-Container der Detail-Ansicht — KEIN eigenes Padding,
+   damit der Hero randlos sein kann. */
+.detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--flaeche);
+}
+
+/* Hero-Bereich oben (grosse kcal-Zahl, zentriert) */
 .detail-hero {
-  background: var(--hero-bg);
-  padding: var(--abstand-m) var(--abstand-s);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  border-bottom: 0.5px solid var(--border);
+  background: var(--bg-akzent);
+  color: var(--text-akzent);
+  padding: 20px var(--abstand-s);
+  text-align: center;
 }
 
 .detail-hero-kcal {
-  font-size: var(--schrift-held);
-  font-weight: 700;
-  color: var(--akzent);
+  font-size: 38px;
+  font-weight: 600;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-hero-untertitel {
-  font-size: var(--schrift-klein);
-  color: var(--text-sekundaer);
+  font-size: 12px;
+  margin-top: 4px;
+  opacity: 0.85;
 }
 
 .detail-hero-pille {
   display: inline-block;
-  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 2px 12px;
   border-radius: var(--radius-pill);
-  background: var(--akzent);
-  color: #FFFFFF;
-  font-size: var(--schrift-mikro);
-  font-weight: 600;
-  margin-top: 4px;
+  font-size: 11px;
+  margin-top: var(--abstand-xs);
 }
 
+/* Gepolsterter Bereich unter dem Hero */
+.detail-body {
+  padding: var(--abstand-s);
+}
+
+/* Eine Sektion (Titel + Zeilen, ohne Karten-Rahmen) */
 .detail-sektion {
-  background: var(--oberflaeche);
-  border-bottom: 0.5px solid var(--border);
   margin-top: var(--abstand-s);
-  border-radius: var(--radius-karte);
-  overflow: hidden;
+}
+
+.detail-body > .detail-sektion:first-child {
+  margin-top: 0;
 }
 
 .detail-sektion-titel {
-  padding: 10px var(--abstand-s) 6px;
-  font-size: var(--schrift-klein);
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-sekundaer);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border-bottom: 0.5px solid var(--border);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
 .naehrwert-reihe {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px var(--abstand-s);
+  padding: 7px 0;
   border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
 }
 
 .naehrwert-reihe:last-child {
   border-bottom: none;
 }
 
-.naehrwert-reihe.eingerueckt {
-  padding-left: var(--abstand-m);
-}
-
-.naehrwert-reihe.eingerueckt .naehrwert-label {
-  font-size: var(--schrift-klein);
-  color: var(--text-sekundaer);
-}
-
 .naehrwert-label {
-  font-size: var(--schrift-body);
-  color: var(--text-primaer);
+  color: var(--text-sekundaer);
 }
 
 .naehrwert-wert {
-  font-size: var(--schrift-body);
   color: var(--text-primaer);
-  font-weight: 500;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eingerueckte "davon"-Zeilen */
+.naehrwert-reihe.eingerueckt {
+  padding-left: 12px;
+}
+
+.naehrwert-reihe.eingerueckt .naehrwert-label {
+  color: var(--text-gedaempft);
+  font-size: 12px;
+}
+
+.naehrwert-reihe.eingerueckt .naehrwert-wert {
+  color: var(--text-sekundaer);
+  font-weight: 400;
+  font-size: 12px;
 }
 
 .detail-id {
-  font-family: "Courier New", Courier, monospace;
-  font-size: var(--schrift-mikro);
-  color: var(--text-mikro);
-  padding: 8px var(--abstand-s);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  padding: var(--abstand-xs) 0;
 }
 
 .detail-bemerkung {
-  font-size: var(--schrift-klein);
+  font-size: 13px;
   color: var(--text-sekundaer);
-  padding: var(--abstand-xs) var(--abstand-s);
+  padding: 6px 0;
   line-height: 1.5;
-  font-style: italic;
 }
 
-/* Zutat-Eintrag im Gerichte-Detail (klickbar) */
+/* Zutat-Zeile im Gerichte-Detail (antippbar) */
 .zutat-eintrag {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: var(--tap-min);
-  padding: 8px var(--abstand-s);
+  padding: 7px 0;
   border-bottom: 0.5px solid var(--border);
   cursor: pointer;
   gap: var(--abstand-xs);
@@ -601,23 +679,26 @@ body {
 }
 
 .zutat-eintrag:active {
-  background: var(--hintergrund);
+  background: var(--flaeche-gedaempft);
 }
 
 .zutat-links {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: var(--abstand-xs);
 }
 
 .zutat-lm-id {
-  font-family: "Courier New", Courier, monospace;
-  font-size: var(--schrift-mikro);
-  color: var(--text-mikro);
-  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-gedaempft);
+  flex-shrink: 0;
 }
 
 .zutat-name {
-  font-size: var(--schrift-body);
+  font-size: 13px;
   color: var(--text-primaer);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -625,80 +706,108 @@ body {
 }
 
 .zutat-menge {
-  font-size: var(--schrift-klein);
+  font-size: 12px;
   color: var(--text-sekundaer);
   white-space: nowrap;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Warnung bei unvollständiger Berechnung */
+/* Warnung bei unvollstaendiger Berechnung */
 .warn-vollstaendigkeit {
   display: flex;
   align-items: flex-start;
   gap: var(--abstand-xs);
   background: var(--warn-bg);
-  border: 0.5px solid var(--warn-border);
-  border-radius: var(--radius-karte);
-  padding: var(--abstand-xs) var(--abstand-s);
-  font-size: var(--schrift-klein);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12px;
   color: var(--text-primaer);
-  margin: var(--abstand-xs) 0;
+  margin-bottom: var(--abstand-s);
   line-height: 1.4;
+}
+
+.warn-vollstaendigkeit .info-symbol {
+  color: var(--warn-text);
+  flex-shrink: 0;
 }
 
 /* ================================================================
    BILDSCHIRM 7: Einstellungen
    ================================================================ */
-.einstellungen-abschnitt {
-  background: var(--oberflaeche);
-  border-radius: var(--radius-karte);
-  border: 0.5px solid var(--border);
-  overflow: hidden;
-  margin-bottom: var(--abstand-s);
-}
-
 .einstellungen-abschnitt-titel {
-  padding: 8px var(--abstand-s);
-  font-size: var(--schrift-klein);
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-sekundaer);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 0.5px solid var(--border);
-  background: var(--hintergrund);
+  letter-spacing: 0.5px;
+  margin: var(--abstand-s) 0 4px;
+}
+
+.ansicht-inhalt > .einstellungen-abschnitt-titel:first-child {
+  margin-top: 0;
 }
 
 .einstellungen-reihe {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px var(--abstand-s);
+  padding: 9px 0;
   border-bottom: 0.5px solid var(--border);
   gap: var(--abstand-s);
-}
-
-.einstellungen-reihe:last-of-type {
-  border-bottom: none;
+  font-size: 13px;
 }
 
 .einstellungen-label {
-  font-size: var(--schrift-body);
-  color: var(--text-primaer);
+  color: var(--text-sekundaer);
+  flex-shrink: 0;
 }
 
 .einstellungen-wert {
-  font-size: var(--schrift-body);
-  color: var(--text-sekundaer);
+  color: var(--text-primaer);
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 55%;
+  font-variant-numeric: tabular-nums;
+}
+
+.einstellungen-wert.erfolg {
+  color: var(--erfolg-text);
 }
 
 .einstellungen-link {
-  color: var(--akzent);
+  color: var(--text-akzent);
   text-decoration: none;
-  font-size: var(--schrift-body);
+}
+
+/* Aktions-Zeile (dezent, antippbar) statt grosser Knopf */
+.aktions-reihe {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 11px 0;
+  border: none;
+  border-bottom: 0.5px solid var(--border);
+  background: none;
+  color: var(--text-akzent);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.aktions-reihe:active {
+  opacity: 0.6;
+}
+
+.aktions-reihe.gefahr {
+  color: var(--gefahr-text);
+}
+
+.aktions-reihe:disabled {
+  color: var(--text-gedaempft);
+  cursor: default;
 }
 
 /* ================================================================
@@ -710,7 +819,7 @@ body {
   left: 0;
   right: 0;
   height: var(--tabbar-hoehe);
-  background: var(--oberflaeche);
+  background: var(--flaeche);
   border-top: 0.5px solid var(--border);
   display: flex;
   z-index: 100;
@@ -725,19 +834,18 @@ body {
   gap: 3px;
   border: none;
   background: none;
-  color: var(--text-mikro);
+  color: var(--text-sekundaer);
   cursor: pointer;
   padding: 0;
-  font-size: 10px;
   min-height: var(--tap-min);
 }
 
 .tab-knopf.aktiv {
-  color: var(--akzent);
+  color: var(--text-akzent);
 }
 
 .tab-knopf span {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -750,23 +858,24 @@ body {
 
 .fett {
   font-weight: 600;
+  color: var(--text-primaer);
 }
 
 .mono-text {
-  font-family: "Courier New", Courier, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }
 
-/* Fehler-Leiste oben */
+/* Globale Fehler-Leiste oben */
 .fehler-leiste {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  background: var(--fehler);
+  background: var(--gefahr-text);
   color: #FFFFFF;
-  padding: var(--abstand-xs) var(--abstand-s);
-  font-size: var(--schrift-klein);
+  padding: 10px var(--abstand-s);
+  font-size: 13px;
   z-index: 200;
   text-align: center;
 }
@@ -775,6 +884,6 @@ body {
 .leerer-zustand {
   padding: var(--abstand-l) var(--abstand-m);
   text-align: center;
-  color: var(--text-mikro);
-  font-size: var(--schrift-body);
+  color: var(--text-gedaempft);
+  font-size: 14px;
 }

@@ -236,7 +236,6 @@ function dbMassenSchreiben(storeName, eintraege) {
   return new Promise((resolve, reject) => {
     const transaktion = db.transaction(storeName, 'readwrite');
     const store = transaktion.objectStore(storeName);
-    let fehler = null;
 
     transaktion.oncomplete = () => resolve();
     transaktion.onerror = () => reject(transaktion.error);
@@ -454,16 +453,23 @@ async function gueltigesAccessTokenHolen() {
 async function dropboxApiAufruf(endpunkt, nutzlast = null, wiederholungsVersuch = false) {
   const token = await gueltigesAccessTokenHolen();
 
+  /* Kopfzeilen aufbauen. Wichtig: Bei Endpunkten OHNE Argumente
+     (z. B. users/get_current_account) darf KEIN Content-Type und
+     KEIN Body gesendet werden — sonst antwortet Dropbox mit einem
+     JSON-Decodier-Fehler. Nur wenn es eine Nutzlast gibt, schicken
+     wir application/json mit. */
   const kopfzeilen = {
     'Authorization': 'Bearer ' + token,
-    'Content-Type':  'application/json',
   };
 
-  const antwort = await fetch(DROPBOX_API_URL + endpunkt, {
-    method: 'POST',
-    headers: kopfzeilen,
-    body: nutzlast !== null ? JSON.stringify(nutzlast) : 'null',
-  });
+  const fetchOptionen = { method: 'POST', headers: kopfzeilen };
+
+  if (nutzlast !== null) {
+    kopfzeilen['Content-Type'] = 'application/json';
+    fetchOptionen.body = JSON.stringify(nutzlast);
+  }
+
+  const antwort = await fetch(DROPBOX_API_URL + endpunkt, fetchOptionen);
 
   if (antwort.status === 401 && !wiederholungsVersuch) {
     /* Token ungültig — einmal erneuern und nochmals versuchen */
@@ -585,8 +591,31 @@ function csvParsen(csvText) {
  * @returns {number}
  */
 function deutscheZahlParsen(wert) {
-  if (!wert || wert.trim() === '') return 0;
-  return parseFloat(wert.replace(',', '.')) || 0;
+  if (wert === null || wert === undefined) return 0;
+  const text = String(wert).trim();
+  if (text === '') return 0;
+  return parseFloat(text.replace(',', '.')) || 0;
+}
+
+/**
+ * Formatiert eine Zahl mit deutschem Dezimalkomma fuer die Anzeige.
+ * Beispiel: zahlDe(9.1, 1) → "9,1", zahlDe(1.2, 2) → "1,20".
+ * @param {number} wert - Die anzuzeigende Zahl
+ * @param {number} stellen - Anzahl Nachkommastellen
+ * @returns {string}
+ */
+function zahlDe(wert, stellen) {
+  return Number(wert).toFixed(stellen).replace('.', ',');
+}
+
+/**
+ * Formatiert eine Mengen-Angabe in Gramm: ganze Zahlen ohne
+ * Nachkommastelle, sonst mit einer. Beispiel: 840 → "840", 12.5 → "12,5".
+ * @param {number} wert - Menge in Gramm
+ * @returns {string}
+ */
+function mengeFormatieren(wert) {
+  return Number.isInteger(wert) ? String(wert) : zahlDe(wert, 1);
 }
 
 /**
@@ -763,9 +792,6 @@ async function allesDatenImportieren(fortschrittCallback) {
    Zurück-Knopf funktioniert (ohne Browser-History-API-Komplexität).
    ---------------------------------------------------------------- */
 
-/* Stack zur Nachverfolgung der Navigation */
-let routerHistorie = [];
-
 /* Globale Zustandsvariablen für die Listenansichten */
 let lebensmittelSuchfilter     = '';
 let lebensmittelGruppenfilter  = 'alle';
@@ -775,9 +801,8 @@ let gerichteKategoriefilter    = 'alle';
 /**
  * Zeigt eine Ansicht an und blendet alle anderen aus.
  * @param {string} ansichtId - Die ID des Bildschirm-Elements
- * @param {boolean} inHistorie - Soll der aktuelle Zustand in die Historie?
  */
-function ansichtAnzeigen(ansichtId, inHistorie = true) {
+function ansichtAnzeigen(ansichtId) {
   /* Alle Ansichten verstecken */
   document.querySelectorAll('.ansicht').forEach(el => {
     el.classList.remove('aktiv');
@@ -806,12 +831,24 @@ function ansichtAnzeigen(ansichtId, inHistorie = true) {
 }
 
 /**
- * Navigiert zu einem bestimmten Bildschirm.
+ * Navigiert zu einem bestimmten Bildschirm, indem der URL-Hash
+ * gesetzt wird. Das Setzen des Hash loest das "hashchange"-Ereignis
+ * aus, welches dann routeVerarbeiten() aufruft.
+ *
+ * Sonderfall: Ist der Ziel-Hash bereits der aktuelle (z. B. nach dem
+ * OAuth-Redirect steht schon "#/lebensmittel" in der URL), feuert der
+ * Browser KEIN "hashchange". Dann rendern wir die Ansicht direkt,
+ * damit die App nicht haengen bleibt.
+ *
  * @param {string} pfad - z. B. "lebensmittel", "gericht/EG_013"
  */
 async function navigieren(pfad) {
-  routerHistorie.push(location.hash);
-  location.hash = '/' + pfad;
+  const neuerHash = '#/' + pfad;
+  if (location.hash === neuerHash) {
+    await routeVerarbeiten();
+  } else {
+    location.hash = neuerHash;
+  }
 }
 
 /**
@@ -997,7 +1034,7 @@ function lebensmittelListeRendern() {
   for (const [gruppenName, eintraege] of Object.entries(gruppen).sort()) {
     html.push(`<div class="gruppen-header">${escapeHtml(gruppenName)} · ${eintraege.length}</div>`);
     for (const lm of eintraege.sort((a, b) => a.name.localeCompare(b.name))) {
-      const kcal = deutscheZahlParsen(lm.kcal_pro_100g);
+      const kcal = Math.round(deutscheZahlParsen(lm.kcal_pro_100g));
       html.push(`
         <div class="listen-eintrag" role="listitem" data-id="${escapeHtml(lm.lebensmittel_id)}" tabindex="0">
           <span class="listen-eintrag-name">${escapeHtml(lm.name)}</span>
@@ -1058,7 +1095,7 @@ async function lebensmittelDetailLaden(lmId) {
 
   document.getElementById('lm-detail-titel').textContent = lm.name;
 
-  const kcal         = deutscheZahlParsen(lm.kcal_pro_100g);
+  const kcal         = Math.round(deutscheZahlParsen(lm.kcal_pro_100g));
   const eiweiss      = deutscheZahlParsen(lm.eiweiss_g);
   const kh           = deutscheZahlParsen(lm.kohlenhydrate_g);
   const zucker       = deutscheZahlParsen(lm.zucker_g);
@@ -1076,32 +1113,32 @@ async function lebensmittelDetailLaden(lmId) {
       <div class="detail-hero-untertitel">kcal pro 100 g</div>
       <span class="detail-hero-pille">${escapeHtml(lm.gruppe || 'Sonstiges')}</span>
     </div>
-    <div class="ansicht-inhalt">
+    <div class="detail-body">
       <div class="detail-sektion">
         <div class="detail-sektion-titel">Makronährwerte (pro 100 g)</div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Eiweiß</span>
-          <span class="naehrwert-wert">${eiweiss.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(eiweiss, 1)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Kohlenhydrate</span>
-          <span class="naehrwert-wert">${kh.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(kh, 1)} g</span>
         </div>
         <div class="naehrwert-reihe eingerueckt">
           <span class="naehrwert-label">davon Zucker</span>
-          <span class="naehrwert-wert">${zucker.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(zucker, 1)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Fett</span>
-          <span class="naehrwert-wert">${fett.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(fett, 1)} g</span>
         </div>
         <div class="naehrwert-reihe eingerueckt">
           <span class="naehrwert-label">davon gesättigt</span>
-          <span class="naehrwert-wert">${fettGes.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(fettGes, 1)} g</span>
         </div>
         <div class="naehrwert-reihe eingerueckt">
           <span class="naehrwert-label">davon ungesättigt</span>
-          <span class="naehrwert-wert">${fettUnges.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(fettUnges, 1)} g</span>
         </div>
       </div>
 
@@ -1109,23 +1146,23 @@ async function lebensmittelDetailLaden(lmId) {
         <div class="detail-sektion-titel">Weitere Werte</div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Salz</span>
-          <span class="naehrwert-wert">${salz.toFixed(2)} g</span>
+          <span class="naehrwert-wert">${zahlDe(salz, 2)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Ballaststoffe</span>
-          <span class="naehrwert-wert">${ballaststoffe.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(ballaststoffe, 1)} g</span>
         </div>`;
 
   if (restmasse > 0) {
     html += `<div class="naehrwert-reihe">
           <span class="naehrwert-label">Restmasse</span>
-          <span class="naehrwert-wert">${restmasse.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(restmasse, 1)} g</span>
         </div>`;
   }
   if (alkohol > 0) {
     html += `<div class="naehrwert-reihe">
           <span class="naehrwert-label">Alkohol</span>
-          <span class="naehrwert-wert">${alkohol.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(alkohol, 1)} g</span>
         </div>`;
   }
 
@@ -1133,9 +1170,7 @@ async function lebensmittelDetailLaden(lmId) {
 
       <div class="detail-sektion">
         <div class="detail-sektion-titel">Kennung</div>
-        <div class="naehrwert-reihe">
-          <span class="naehrwert-label detail-id">${escapeHtml(lm.lebensmittel_id)}</span>
-        </div>`;
+        <div class="detail-id">${escapeHtml(lm.lebensmittel_id)}</div>`;
 
   if (lm.bemerkung) {
     html += `<div class="detail-bemerkung">${escapeHtml(lm.bemerkung)}</div>`;
@@ -1271,12 +1306,13 @@ async function gerichtDetailLaden(gerichtId) {
       <div class="detail-hero-untertitel">kcal pro 100 g (berechnet)</div>
       <span class="detail-hero-pille">${escapeHtml(gericht.gericht_kategorie || 'Sonstiges')}</span>
     </div>
-    <div class="ansicht-inhalt">`;
+    <div class="detail-body">`;
 
   /* Warnung bei unvollständiger Berechnung */
   if (gericht.kcal_unvollstaendig) {
     html += `<div class="warn-vollstaendigkeit">
-      ⚠️ ${gericht.anzahl_unbekannte_zutaten} Zutat(en) konnten nicht verknüpft werden — Nährwerte sind unvollständig.
+      <span class="info-symbol" aria-hidden="true">⚠</span>
+      <span>${gericht.anzahl_unbekannte_zutaten} Zutat(en) konnten nicht verknüpft werden — Nährwerte sind unvollständig.</span>
     </div>`;
   }
 
@@ -1285,27 +1321,27 @@ async function gerichtDetailLaden(gerichtId) {
         <div class="detail-sektion-titel">Berechnete Nährwerte (pro 100 g)</div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Eiweiß</span>
-          <span class="naehrwert-wert">${eiweiss.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(eiweiss, 1)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Kohlenhydrate</span>
-          <span class="naehrwert-wert">${kh.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(kh, 1)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Fett</span>
-          <span class="naehrwert-wert">${fett.toFixed(1)} g</span>
+          <span class="naehrwert-wert">${zahlDe(fett, 1)} g</span>
         </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Salz</span>
-          <span class="naehrwert-wert">${salz.toFixed(2)} g</span>
+          <span class="naehrwert-wert">${zahlDe(salz, 2)} g</span>
         </div>
       </div>
 
       <div class="detail-sektion">
         <div class="detail-sektion-titel">Endgewicht der Portion</div>
         <div class="naehrwert-reihe">
-          <span class="naehrwert-label">Gesamt-Endgewicht</span>
-          <span class="naehrwert-wert">${endgewicht} g</span>
+          <span class="naehrwert-label">Gesamt</span>
+          <span class="naehrwert-wert">${mengeFormatieren(endgewicht)} g</span>
         </div>
       </div>
 
@@ -1320,7 +1356,7 @@ async function gerichtDetailLaden(gerichtId) {
             <span class="zutat-lm-id">${escapeHtml(zutat.zutat_lebensmittel_id)}</span>
             <span class="zutat-name">${escapeHtml(zutat.zutat_lebensmittel_name_original)}</span>
           </div>
-          <span class="zutat-menge">${mengeG} g</span>
+          <span class="zutat-menge">${mengeFormatieren(mengeG)} g</span>
         </div>`;
   }
 
@@ -1342,10 +1378,26 @@ async function gerichtDetailLaden(gerichtId) {
 
 /* -- Bildschirm 7: Einstellungen -------------------------------- */
 
+/**
+ * Aktualisiert die Online/Offline-Anzeige in den Einstellungen.
+ * "online" wird gruen hervorgehoben. Wird sowohl beim Oeffnen der
+ * Einstellungen als auch bei Netzwerk-Ereignissen aufgerufen.
+ */
+function onlineStatusAktualisieren() {
+  const statusEl = document.getElementById('einst-online-status');
+  if (!statusEl) return;
+  if (navigator.onLine) {
+    statusEl.textContent = 'online';
+    statusEl.classList.add('erfolg');
+  } else {
+    statusEl.textContent = 'offline';
+    statusEl.classList.remove('erfolg');
+  }
+}
+
 async function einstellungenLaden() {
   /* Online-Status */
-  document.getElementById('einst-online-status').textContent =
-    navigator.onLine ? 'Online' : 'Offline';
+  onlineStatusAktualisieren();
 
   /* Sync-Zeitstempel */
   const meta = await dbLesen('meta', 'config');
@@ -1371,14 +1423,20 @@ async function einstellungenLaden() {
     document.getElementById('einst-email').textContent = '(Offline)';
   }
 
-  /* Speicher-Nutzung */
+  /* Speicher-Nutzung (belegt in MB, Gesamt in GB — wie im Mockup) */
   try {
     const speicher = await dropboxSpeicherInfoHolen();
-    const belegtMb = Math.round((speicher.used || 0) / 1024 / 1024);
-    const gesamtMb = speicher.allocation && speicher.allocation.allocated
-      ? Math.round(speicher.allocation.allocated / 1024 / 1024)
-      : 2048;
-    document.getElementById('einst-speicher').textContent = `${belegtMb} MB / ${gesamtMb} MB`;
+    const belegtMb = (speicher.used || 0) / 1024 / 1024;
+    const belegtText = belegtMb < 10 ? `${zahlDe(belegtMb, 1)} MB` : `${Math.round(belegtMb)} MB`;
+
+    let gesamtText = '2 GB';
+    const allocBytes = speicher.allocation && speicher.allocation.allocated;
+    if (allocBytes) {
+      const gesamtGb = allocBytes / 1024 / 1024 / 1024;
+      gesamtText = Number.isInteger(gesamtGb) ? `${gesamtGb} GB` : `${zahlDe(gesamtGb, 1)} GB`;
+    }
+
+    document.getElementById('einst-speicher').textContent = `${belegtText} / ${gesamtText}`;
   } catch (e) {
     document.getElementById('einst-speicher').textContent = '(Offline)';
   }
@@ -1515,6 +1573,11 @@ function ereignisListenerRegistrieren() {
   window.addEventListener('hashchange', () => {
     routeVerarbeiten();
   });
+
+  /* Netzwerk-Status live aktualisieren, damit die Einstellungen-
+     Anzeige sofort auf "offline"/"online" umspringt. */
+  window.addEventListener('online', onlineStatusAktualisieren);
+  window.addEventListener('offline', onlineStatusAktualisieren);
 }
 
 /* ----------------------------------------------------------------
