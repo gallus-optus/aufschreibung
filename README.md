@@ -3,9 +3,23 @@
 Progressive Web App zur persönlichen Ernährungs- und Vitalwert-Aufzeichnung.
 
 **Live-App:** https://gallus-optus.github.io/aufschreibung/
-**Version:** 0.2 (Phase C)
+**Version:** 0.3 (Phase F)
 
 ## Was die App kann
+
+### Dropbox-Synchronisierung (Phase F)
+
+- **Zwei-Wege-Sync** mit Dropbox: lokale Erfassungen, Vitaldaten und
+  Einheiten-Werte werden hochgeladen, Änderungen anderer Geräte
+  heruntergeladen und zusammengeführt
+- **Zeilenweises Mergen** über IDs — kein Eintrag geht verloren; bei
+  Konflikt gewinnt der neuere Stand
+- **Rollierendes Backup** (5 Versionen je Datei im Ordner `_backups/`)
+  vor jedem Überschreiben
+- **Automatisch** beim App-Start und ~60 s nach einer Erfassung, plus
+  manueller Knopf in „Mehr"
+- Funktioniert offline (sammelt Änderungen) und erneuert abgelaufene
+  Tokens selbstständig
 
 ### Tageseingabe (Phase C)
 
@@ -33,8 +47,9 @@ Progressive Web App zur persönlichen Ernährungs- und Vitalwert-Aufzeichnung.
 - Einstellungen: Konto-Info, Sync-Status, Datenbank-Statistik
 - Offline-Betrieb nach erstem Sync (Service Worker, Cache-First)
 
-> **Hinweis:** Phase C schreibt erfasste Daten nur lokal (IndexedDB).
-> Das Hochladen nach Dropbox folgt in Phase F.
+> **Hinweis:** Seit Phase F werden erfasste Daten automatisch mit
+> Dropbox synchronisiert (mit rollierendem Backup). Excel bleibt das
+> Auswertungstool am PC (CSV-Import aus dem Dropbox-Ordner).
 
 ## Voraussetzung
 
