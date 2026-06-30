@@ -781,6 +781,14 @@ body {
   color: var(--erfolg-text);
 }
 
+.einstellungen-wert.warnung {
+  color: var(--warn-text);
+}
+
+.einstellungen-wert.gefahr {
+  color: var(--gefahr-text);
+}
+
 .einstellungen-link {
   color: var(--text-akzent);
   text-decoration: none;

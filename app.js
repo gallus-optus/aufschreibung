@@ -625,6 +625,101 @@ async function dropboxDateienAuflisten() {
 }
 
 /* ----------------------------------------------------------------
+   4b. DROPBOX-SCHREIBZUGRIFFE (Phase F)
+
+   Hochladen, Kopieren, Loeschen und Metadaten-Abfrage. Alle mit
+   automatischer Token-Erneuerung bei 401 (wie die Lese-Funktionen).
+   ---------------------------------------------------------------- */
+
+/**
+ * Laedt eine Datei in den App-Ordner hoch (overwrite-Modus).
+ * Der Inhalt wird als UTF-8 kodiert (das fuehrende BOM bleibt als
+ * Bytes EF BB BF erhalten — wichtig fuer Excel).
+ * @param {string} dateiPfad - z. B. "/03_Erfassung.csv"
+ * @param {string} inhalt - Der vollstaendige Dateiinhalt (mit BOM)
+ * @returns {Promise<Object>} - Dropbox-Metadaten der neuen Version (inkl. rev)
+ */
+async function dropboxDateiHochladen(dateiPfad, inhalt, wiederholungsVersuch = false) {
+  const token = await gueltigesAccessTokenHolen();
+
+  const antwort = await fetch(DROPBOX_CONTENT_URL + 'files/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization':   'Bearer ' + token,
+      'Dropbox-API-Arg': JSON.stringify({ path: dateiPfad, mode: 'overwrite', mute: true }),
+      'Content-Type':    'application/octet-stream',
+    },
+    /* Als echte UTF-8-Bytes senden, damit das BOM und Umlaute korrekt
+       ankommen. */
+    body: new TextEncoder().encode(inhalt),
+  });
+
+  if (antwort.status === 401 && !wiederholungsVersuch) {
+    const tokens = await tokensLaden();
+    if (tokens && tokens.refresh_token) {
+      await accessTokenErneuern(tokens.refresh_token);
+      return dropboxDateiHochladen(dateiPfad, inhalt, true);
+    }
+  }
+
+  if (!antwort.ok) {
+    const fehlerText = await antwort.text();
+    throw new Error(`Upload fehlgeschlagen für ${dateiPfad} (${antwort.status}): ${fehlerText}`);
+  }
+
+  return antwort.json();
+}
+
+/**
+ * Kopiert eine Datei innerhalb des App-Ordners (fuer Backups).
+ * @param {string} vonPfad - Quellpfad
+ * @param {string} nachPfad - Zielpfad
+ */
+async function dropboxKopieren(vonPfad, nachPfad) {
+  return dropboxApiAufruf('files/copy_v2', {
+    from_path: vonPfad,
+    to_path:   nachPfad,
+    autorename: false,
+  });
+}
+
+/**
+ * Loescht eine Datei im App-Ordner (fuer alte Backups).
+ * @param {string} dateiPfad - Pfad der zu loeschenden Datei
+ */
+async function dropboxLoeschen(dateiPfad) {
+  return dropboxApiAufruf('files/delete_v2', { path: dateiPfad });
+}
+
+/**
+ * Holt die Metadaten aller Dateien in einem Ordner als Map
+ * (Dateiname → Eintrag mit rev und server_modified). Beachtet die
+ * Dropbox-Seitenaufteilung (has_more/cursor). Existiert der Ordner
+ * nicht, wird eine leere Map zurueckgegeben.
+ * @param {string} pfad - "" fuer den App-Ordner, "/_backups" fuer Backups
+ * @returns {Promise<Map<string, Object>>}
+ */
+async function dropboxOrdnerMetadaten(pfad = '') {
+  const karte = new Map();
+  let ergebnis;
+  try {
+    ergebnis = await dropboxApiAufruf('files/list_folder', { path: pfad });
+  } catch (fehler) {
+    /* Ordner existiert (noch) nicht — leere Map ist das richtige Ergebnis */
+    return karte;
+  }
+  const eintragAufnehmen = (e) => {
+    if (e['.tag'] === 'file') karte.set(e.name, e);
+  };
+  (ergebnis.entries || []).forEach(eintragAufnehmen);
+  while (ergebnis.has_more) {
+    ergebnis = await dropboxApiAufruf('files/list_folder/continue', { cursor: ergebnis.cursor });
+    (ergebnis.entries || []).forEach(eintragAufnehmen);
+  }
+  return karte;
+}
+
+/* ----------------------------------------------------------------
    5. CSV-PARSER UND DATEN-IMPORT
 
    Eigener CSV-Parser für die deutschen Excel-Dateien:
@@ -634,32 +729,114 @@ async function dropboxDateienAuflisten() {
    ---------------------------------------------------------------- */
 
 /**
+ * Zerlegt einen CSV-Text in Zeilen aus Feldern. Beachtet
+ * Anfuehrungszeichen nach RFC 4180: innerhalb von "..." duerfen
+ * Semikolon und Zeilenumbruch stehen, "" ist ein literales
+ * Anfuehrungszeichen. So gehen freie Bemerkungs-Texte mit Semikolon
+ * nicht kaputt. Trennzeichen ist das Semikolon (deutsche Excel-Notation).
+ * @param {string} text - Der gesamte CSV-Inhalt
+ * @returns {Array<Array<string>>} - Zeilen, je Zeile ein Feld-Array
+ */
+function csvInFelderZerlegen(text) {
+  /* BOM (Byte Order Mark) am Anfang entfernen, falls vorhanden */
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  const zeilen = [];
+  let aktuelleZeile = [];
+  let feld = '';
+  let inAnfuehrung = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const zeichen = text[i];
+
+    if (inAnfuehrung) {
+      if (zeichen === '"') {
+        /* Verdoppeltes Anfuehrungszeichen = ein literales " */
+        if (text[i + 1] === '"') { feld += '"'; i += 2; continue; }
+        inAnfuehrung = false; i++; continue;
+      }
+      feld += zeichen; i++; continue;
+    }
+
+    if (zeichen === '"') { inAnfuehrung = true; i++; continue; }
+    if (zeichen === ';') { aktuelleZeile.push(feld); feld = ''; i++; continue; }
+    if (zeichen === '\r') { i++; continue; }            /* CR ignorieren (CRLF→LF) */
+    if (zeichen === '\n') {
+      aktuelleZeile.push(feld);
+      zeilen.push(aktuelleZeile);
+      aktuelleZeile = []; feld = ''; i++; continue;
+    }
+    feld += zeichen; i++;
+  }
+
+  /* Letztes Feld/letzte Zeile abschliessen (falls Datei ohne
+     abschliessenden Zeilenumbruch endet) */
+  if (feld !== '' || aktuelleZeile.length > 0) {
+    aktuelleZeile.push(feld);
+    zeilen.push(aktuelleZeile);
+  }
+  return zeilen;
+}
+
+/**
  * Wandelt eine CSV-Zeichenkette in ein Array von Objekten um.
  * Die erste Zeile wird als Kopfzeile (Spaltennamen) verwendet.
  * @param {string} csvText - Der gesamte CSV-Inhalt als Text
  * @returns {Array<Object>} - Array mit einem Objekt pro Datenzeile
  */
 function csvParsen(csvText) {
-  /* BOM (Byte Order Mark) am Anfang entfernen, falls vorhanden */
-  const bereinigt = csvText.replace(/^﻿/, '');
-  const zeilen = bereinigt.split('\n').filter(z => z.trim() !== '');
+  /* Komplett leere Zeilen verwerfen (z. B. Leerzeile am Dateiende) */
+  const zeilen = csvInFelderZerlegen(csvText)
+    .filter(z => !(z.length === 1 && z[0].trim() === ''));
 
   if (zeilen.length < 2) return [];
 
-  /* Kopfzeile: Spaltennamen extrahieren */
-  const kopfzeile = zeilen[0].split(';').map(s => s.trim());
-
+  const kopfzeile = zeilen[0].map(s => s.trim());
   const ergebnis = [];
   for (let i = 1; i < zeilen.length; i++) {
-    const felder = zeilen[i].split(';');
+    const felder = zeilen[i];
     const objekt = {};
     kopfzeile.forEach((spalte, index) => {
-      objekt[spalte] = (felder[index] || '').trim();
+      objekt[spalte] = (felder[index] !== undefined ? felder[index] : '').trim();
     });
     ergebnis.push(objekt);
   }
-
   return ergebnis;
+}
+
+/**
+ * Serialisiert ein einzelnes CSV-Feld in deutscher Excel-Notation.
+ * Felder mit Semikolon, Anfuehrungszeichen oder Zeilenumbruch werden
+ * in Anfuehrungszeichen gesetzt, innere " werden verdoppelt.
+ * @param {*} wert - Der Feldwert (Zahl, String, null, undefined)
+ * @returns {string}
+ */
+function csvFeldSerialisieren(wert) {
+  if (wert === null || wert === undefined) return '';
+  let text = String(wert);
+  if (/[;"\n\r]/.test(text)) {
+    text = '"' + text.replace(/"/g, '""') + '"';
+  }
+  return text;
+}
+
+/**
+ * Baut eine vollstaendige CSV-Datei in deutscher Excel-Notation:
+ * UTF-8-BOM, Semikolon-Trenner, \n-Zeilenenden, abschliessender
+ * Zeilenumbruch. Die Spaltenreihenfolge bestimmt das Ergebnis.
+ * @param {Array<string>} spalten - Spaltennamen (Reihenfolge = Ausgabe)
+ * @param {Array<Object>} zeilen - Datenzeilen als Objekte
+ * @returns {string} - Der fertige CSV-Text inkl. BOM
+ */
+function csvSchreiben(spalten, zeilen) {
+  const BOM = '﻿';
+  const kopf = spalten.map(csvFeldSerialisieren).join(';');
+  const koerper = zeilen
+    .map(zeile => spalten.map(sp => csvFeldSerialisieren(zeile[sp])).join(';'))
+    .join('\n');
+  /* Header immer mit \n abschliessen; Koerper nur wenn vorhanden */
+  return BOM + kopf + '\n' + (koerper ? koerper + '\n' : '');
 }
 
 /**
@@ -1725,15 +1902,9 @@ async function gerichtDetailLaden(gerichtId) {
  * Einstellungen als auch bei Netzwerk-Ereignissen aufgerufen.
  */
 function onlineStatusAktualisieren() {
-  const statusEl = document.getElementById('einst-online-status');
-  if (!statusEl) return;
-  if (navigator.onLine) {
-    statusEl.textContent = 'online';
-    statusEl.classList.add('erfolg');
-  } else {
-    statusEl.textContent = 'offline';
-    statusEl.classList.remove('erfolg');
-  }
+  /* Die Status-Zeile zeigt jetzt den Sync-Zustand (Phase F). Bei einem
+     Wechsel online↔offline einfach die Anzeige neu zeichnen. */
+  syncStatusAnzeigen();
 }
 
 async function einstellungenLaden() {
@@ -1750,9 +1921,9 @@ async function einstellungenLaden() {
     document.getElementById('einst-sync-zeit').textContent = 'Noch nie';
   }
 
-  /* Offene (noch nicht hochgeladene) Aenderungen zaehlen — Vorbereitung
-     fuer Phase F. Zaehlt Erfassungen, Vitaldaten und geaenderte
-     Stammdaten mit sync_status "neu"/"geaendert". */
+  /* Offene (noch nicht hochgeladene) Aenderungen zaehlen: Datensaetze
+     mit sync_status "neu"/"geaendert" ueber alle vier Datendateien. */
+  let offen = 0;
   try {
     const offenEl = document.getElementById('einst-offen-anzahl');
     const istOffen = d => d.sync_status === 'neu' || d.sync_status === 'geaendert';
@@ -1760,19 +1931,46 @@ async function einstellungenLaden() {
     const vit = await dbAllesLesen('vitaldaten');
     const lm  = await dbAllesLesen('lebensmittel');
     const eg  = await dbAllesLesen('eigengerichte');
-    const offen = erf.filter(istOffen).length + vit.filter(istOffen).length +
-                  lm.filter(istOffen).length + eg.filter(istOffen).length;
-    offenEl.textContent = offen === 0 ? 'Alles aktuell' : `${offen} Änderung${offen === 1 ? '' : 'en'}`;
+    offen = erf.filter(istOffen).length + vit.filter(istOffen).length +
+            lm.filter(istOffen).length + eg.filter(istOffen).length;
+    offenEl.textContent = String(offen);
     offenEl.classList.toggle('erfolg', offen === 0);
   } catch (e) {
     document.getElementById('einst-offen-anzahl').textContent = '—';
   }
 
+  /* Status-Zeile passend zum offenen Stand aktualisieren (sofern nicht
+     gerade ein Sync laeuft). */
+  if (offen > 0 && letzterSyncStatus !== 'laeuft') {
+    letzterSyncStatus = 'ausstehend';
+  } else if (offen === 0 && letzterSyncStatus === 'ausstehend') {
+    letzterSyncStatus = 'synchron';
+  }
+  syncStatusAnzeigen();
+
+  /* Sicherungen: Zeitpunkt des letzten Backups + behaltene Versionen */
+  const syncMeta = await syncMetaHolen();
+  const sicherungZeit = letzteSicherungMs || syncMeta.letzte_sicherung;
+  const backupEl = document.getElementById('einst-backup-zeit');
+  if (backupEl) {
+    if (sicherungZeit) {
+      const d = new Date(sicherungZeit);
+      const heute = (d.toDateString() === new Date().toDateString());
+      backupEl.textContent = (heute ? 'heute ' : `${zweiStellen(d.getDate())}.${zweiStellen(d.getMonth() + 1)}. `) +
+        `${zweiStellen(d.getHours())}:${zweiStellen(d.getMinutes())}`;
+    } else {
+      backupEl.textContent = 'Noch keine';
+    }
+  }
+
   /* Anzahlen aus IndexedDB */
-  const lmAnzahl = await dbZaehlen('lebensmittel');
-  const egAnzahl = await dbZaehlen('eigengerichte');
+  const lmAnzahl  = await dbZaehlen('lebensmittel');
+  const egAnzahl  = await dbZaehlen('eigengerichte');
+  const erfAnzahl = await dbZaehlen('erfassung');
   document.getElementById('einst-lm-anzahl').textContent = lmAnzahl;
   document.getElementById('einst-eg-anzahl').textContent = egAnzahl;
+  const erfEl = document.getElementById('einst-erf-anzahl');
+  if (erfEl) erfEl.textContent = erfAnzahl;
 
   /* Konto-Info von Dropbox holen */
   try {
@@ -2261,6 +2459,9 @@ async function erfassenSpeichern() {
 
   await dbSchreiben('erfassung', eintrag);
 
+  /* Phase F: 60-s-Sammelupload anstossen (debounce). */
+  syncAnstossenNachErfassung();
+
   erfassenBearbeitenId = null;
   erfassenAuswahl      = null;
   erfassenVorbelegung  = null;
@@ -2363,6 +2564,587 @@ async function vitalwerteSpeichern(ereignis) {
   };
   await dbSchreiben('vitaldaten', vitaldaten);
   document.getElementById('vital-hinweis').textContent = 'Gespeichert.';
+
+  /* Phase F: 60-s-Sammelupload anstossen (debounce). */
+  syncAnstossenNachErfassung();
+}
+
+/* ================================================================
+   7c. DROPBOX-SYNC (Phase F)
+
+   Zwei-Wege-Synchronisierung mit Dropbox, defensiv gegen
+   Datenverlust. Grundprinzipien (nicht verhandelbar):
+     1. IMMER erst herunterladen, dann mergen, dann Backup, dann
+        hochladen — nie nur hochladen.
+     2. Zeilenweises Mergen ueber IDs; bei Konflikt gewinnt der
+        neuere Zeitstempel.
+     3. Rollierendes Backup (5 Versionen) vor jedem Ueberschreiben.
+
+   Phase F schreibt nur 01-04. Die Konfiguration (05) bleibt nur
+   lesend. Die internen Felder geaendert_am/sync_status kommen NICHT
+   in die CSV — nur in IndexedDB.
+   ================================================================ */
+
+/* Wieviele Backup-Versionen pro Datei behalten werden. */
+const BACKUP_BEHALTEN = 5;
+/* Sammel-Verzoegerung nach einer Erfassung, bevor hochgeladen wird. */
+const SYNC_DEBOUNCE_MS = 60000;
+
+/* Spaltenreihenfolge der CSV-Dateien (inkl. der Phase-C-Felder). */
+const CSV_SPALTEN_01 = ['lebensmittel_id', 'name', 'bemerkung', 'gruppe', 'kcal_pro_100g', 'eiweiss_g', 'kohlenhydrate_g', 'zucker_g', 'fett_g', 'fett_gesaettigt_g', 'fett_ungesaettigt_g', 'salz_g', 'ballaststoffe_g', 'restmasse_g', 'alkohol_g', 'gramm_pro_stueck', 'gramm_pro_portion', 'gramm_pro_scheibe', 'gramm_pro_essloeffel', 'gramm_pro_teeloeffel'];
+const CSV_SPALTEN_02 = ['gericht_id', 'gericht_name', 'gericht_kategorie', 'gericht_original_kategorie', 'gericht_endgewicht_g', 'zutat_nr', 'zutat_lebensmittel_id', 'zutat_lebensmittel_name_original', 'zutat_menge_g', 'gramm_pro_stueck', 'gramm_pro_portion', 'gramm_pro_scheibe', 'gramm_pro_essloeffel', 'gramm_pro_teeloeffel'];
+const CSV_SPALTEN_03 = ['erfassungs_id', 'datum', 'zeit', 'mahlzeit_typ', 'menge_g', 'lebensmittel_id', 'lebensmittel_name', 'ist_eigengericht', 'eigengericht_id', 'gericht_kontext', 'bemerkung', 'menge_eingabe', 'einheit_eingabe'];
+const CSV_SPALTEN_04 = ['datum', 'gewicht_kg', 'bauchumfang_cm', 'armumfang_cm', 'blutdruck_systolisch', 'blutdruck_diastolisch', 'puls', 'k_faktor', 'bemerkung'];
+
+/* Laufzeit-Zustand des Syncs */
+let syncLaeuftGerade   = false;   /* Sperre gegen ueberlappende Syncs */
+let syncDebounceTimer  = null;    /* Timer fuer den 60-s-Upload */
+let letzterSyncStatus  = 'unbekannt';
+let letzteSicherungMs  = null;    /* Zeitpunkt des letzten Backups */
+
+/* -- Zahl-Serialisierung fuer die CSV --------------------------- */
+
+/**
+ * Wandelt einen Mengen-Wert in deutsche CSV-Notation. Zahlen werden
+ * mit Komma-Dezimal ausgegeben; bereits vorliegende Strings (deutsche
+ * Notation aus der CSV) werden unveraendert durchgereicht.
+ */
+function mengeNachCsv(wert) {
+  if (wert === null || wert === undefined || wert === '') return '';
+  return (typeof wert === 'number') ? mengeFormatieren(wert) : String(wert);
+}
+
+/* -- CSV-Zeilen-Builder (IndexedDB-Objekt → CSV-Zeile) ---------- */
+
+function erfassungZuCsvZeile(e) {
+  return {
+    erfassungs_id:    e.erfassungs_id,
+    datum:            e.datum || '',
+    zeit:             e.zeit || '',
+    mahlzeit_typ:     e.mahlzeit_typ || '',
+    menge_g:          mengeNachCsv(e.menge_g),
+    lebensmittel_id:  e.lebensmittel_id || '',
+    lebensmittel_name: e.lebensmittel_name || '',
+    ist_eigengericht: e.ist_eigengericht ? 'true' : 'false',
+    eigengericht_id:  e.eigengericht_id || '',
+    gericht_kontext:  e.gericht_kontext || '',
+    bemerkung:        e.bemerkung || '',
+    menge_eingabe:    e.menge_eingabe || '',
+    einheit_eingabe:  e.einheit_eingabe || '',
+  };
+}
+
+function vitaldatenZuCsvZeile(v) {
+  return {
+    datum:                 v.datum,
+    gewicht_kg:            v.gewicht_kg || '',
+    bauchumfang_cm:        v.bauchumfang_cm || '',
+    armumfang_cm:          v.armumfang_cm || '',
+    blutdruck_systolisch:  v.blutdruck_systolisch || '',
+    blutdruck_diastolisch: v.blutdruck_diastolisch || '',
+    puls:                  v.puls || '',
+    k_faktor:              v.k_faktor || '',
+    bemerkung:             v.bemerkung || '',
+  };
+}
+
+function lebensmittelZuCsvZeile(lm) {
+  const zeile = {};
+  for (const spalte of CSV_SPALTEN_01) {
+    zeile[spalte] = lm[spalte] !== undefined ? lm[spalte] : '';
+  }
+  return zeile;
+}
+
+/* -- Normalisierung (CSV-Zeile → IndexedDB-Objekt) -------------- */
+
+/**
+ * Wandelt eine gelesene Erfassungs-CSV-Zeile in die interne Form.
+ * menge_g wird zur Zahl, ist_eigengericht zum Bool. proxyZeit ist die
+ * server_modified-Zeit der Dropbox-Datei (Ersatz-geaendert_am).
+ */
+function csvZeileZuErfassung(z, proxyZeit) {
+  return {
+    erfassungs_id:    z.erfassungs_id,
+    datum:            z.datum || '',
+    zeit:             z.zeit || '',
+    mahlzeit_typ:     z.mahlzeit_typ || '',
+    menge_g:          deutscheZahlParsen(z.menge_g),
+    lebensmittel_id:  z.lebensmittel_id || '',
+    lebensmittel_name: z.lebensmittel_name || '',
+    /* tolerant lesen: true/1 → true, alles andere → false */
+    ist_eigengericht: (z.ist_eigengericht === 'true' || z.ist_eigengericht === '1' || z.ist_eigengericht === true),
+    eigengericht_id:  z.eigengericht_id || '',
+    gericht_kontext:  z.gericht_kontext || '',
+    bemerkung:        z.bemerkung || '',
+    menge_eingabe:    z.menge_eingabe || '',
+    einheit_eingabe:  z.einheit_eingabe || '',
+    geaendert_am:     proxyZeit,
+    sync_status:      'synchronisiert',
+  };
+}
+
+function csvZeileZuVitaldaten(z, proxyZeit) {
+  return {
+    datum:                 z.datum,
+    gewicht_kg:            z.gewicht_kg || '',
+    bauchumfang_cm:        z.bauchumfang_cm || '',
+    armumfang_cm:          z.armumfang_cm || '',
+    blutdruck_systolisch:  z.blutdruck_systolisch || '',
+    blutdruck_diastolisch: z.blutdruck_diastolisch || '',
+    puls:                  z.puls || '',
+    k_faktor:              z.k_faktor || '',
+    bemerkung:             z.bemerkung || '',
+    geaendert_am:          proxyZeit,
+    sync_status:           'synchronisiert',
+  };
+}
+
+function csvZeileZuLebensmittel(z, proxyZeit) {
+  const obj = {};
+  for (const spalte of CSV_SPALTEN_01) {
+    obj[spalte] = z[spalte] !== undefined ? z[spalte] : '';
+  }
+  obj.geaendert_am = proxyZeit;
+  obj.sync_status  = 'synchronisiert';
+  return obj;
+}
+
+/* -- Merge (zeilenweise ueber IDs) ------------------------------ */
+
+/**
+ * Fuehrt zwei Zeilen-Maps zusammen. Reine Vereinigung verschiedener
+ * IDs; bei gleicher ID gewinnt die lokale Zeile, wenn ihr geaendert_am
+ * >= server_modified der Dropbox-Datei ist, sonst die Dropbox-Zeile
+ * (RQ-1: server_modified als Ersatz-Zeitstempel fuer Dropbox-Zeilen).
+ * @returns {Map} - das gemergte Ergebnis (Schluessel → Zeile)
+ */
+function zeilenMergen(lokaleMap, dropboxMap, serverModifiedMs) {
+  const ergebnis = new Map();
+  const alleSchluessel = new Set([...lokaleMap.keys(), ...dropboxMap.keys()]);
+  for (const schluessel of alleSchluessel) {
+    const l = lokaleMap.get(schluessel);
+    const d = dropboxMap.get(schluessel);
+    if (l && !d) {
+      ergebnis.set(schluessel, l);
+    } else if (d && !l) {
+      ergebnis.set(schluessel, d);
+    } else {
+      const lZeit = l.geaendert_am ? (Date.parse(l.geaendert_am) || 0) : 0;
+      ergebnis.set(schluessel, (lZeit >= serverModifiedMs) ? l : d);
+    }
+  }
+  return ergebnis;
+}
+
+/* -- Rollierendes Backup ---------------------------------------- */
+
+function zweiStellen(n) { return String(n).padStart(2, '0'); }
+
+/**
+ * Backup-Zeitstempel YYYY-MM-DD_HHMM (oder mit Sekunden bei Kollision).
+ */
+function backupZeitstempel(mitSekunden) {
+  const d = new Date();
+  const datum = `${d.getFullYear()}-${zweiStellen(d.getMonth() + 1)}-${zweiStellen(d.getDate())}`;
+  const zeit = mitSekunden
+    ? `${zweiStellen(d.getHours())}${zweiStellen(d.getMinutes())}${zweiStellen(d.getSeconds())}`
+    : `${zweiStellen(d.getHours())}${zweiStellen(d.getMinutes())}`;
+  return `${datum}_${zeit}`;
+}
+
+/**
+ * Legt vor dem Ueberschreiben ein Backup der aktuellen Dropbox-Datei
+ * im Ordner _backups/ an und loescht ueberzaehlige (aelter als die
+ * juengsten 5). Wirft bei Fehler — der Aufrufer ueberschreibt dann NICHT.
+ * @param {string} dateiname - z. B. "03_Erfassung.csv"
+ * @param {string} quellPfad - z. B. "/03_Erfassung.csv"
+ */
+async function backupAnlegen(dateiname, quellPfad) {
+  const basis = dateiname.replace(/\.csv$/i, '');
+  const vorhandene = await dropboxOrdnerMetadaten('/_backups');
+
+  let stempel  = backupZeitstempel(false);
+  let zielName = `${basis}_backup_${stempel}.csv`;
+  /* Kollision in derselben Minute → Sekunden anhaengen, damit kein
+     frueheres Backup ueberschrieben wird. */
+  if (vorhandene.has(zielName)) {
+    zielName = `${basis}_backup_${backupZeitstempel(true)}.csv`;
+  }
+
+  await dropboxKopieren(quellPfad, `/_backups/${zielName}`);
+  letzteSicherungMs = Date.now();
+
+  /* Alte Backups derselben Quelldatei aufraeumen (nur 5 behalten). */
+  const aktualisiert = await dropboxOrdnerMetadaten('/_backups');
+  const praefix = `${basis}_backup_`;
+  const namen = Array.from(aktualisiert.keys())
+    .filter(n => n.startsWith(praefix))
+    .sort();   /* lexikografisch = chronologisch (YYYY-MM-DD_HHMM) */
+  const zuLoeschen = namen.slice(0, Math.max(0, namen.length - BACKUP_BEHALTEN));
+  for (const name of zuLoeschen) {
+    try { await dropboxLoeschen(`/_backups/${name}`); } catch (e) { /* unkritisch */ }
+  }
+}
+
+/* -- Sync-Metadaten (gemerkte revs etc.) ------------------------ */
+
+async function syncMetaHolen() {
+  const m = await dbLesen('meta', 'sync');
+  return m || { schluessel: 'sync', revs: {}, letzte_sicherung: null };
+}
+
+async function syncMetaSpeichern(m) {
+  m.schluessel = 'sync';
+  await dbSchreiben('meta', m);
+}
+
+/* -- Synchronisierung einer zeilenbasierten Datei (01/03/04) ---- */
+
+/**
+ * Synchronisiert eine zeilenbasierte CSV-Datei (Erfassung, Vitaldaten,
+ * Lebensmittel) nach dem Grundablauf: Version pruefen → ggf.
+ * herunterladen → mergen → (bei Aenderung) Backup → hochladen →
+ * lokale DB angleichen → rev merken.
+ *
+ * @param {Object} konfig - { dateiname, store, keyFeld, spalten,
+ *   zuCsvZeile, vonCsvZeile }
+ */
+async function syncRowDatei(konfig, metaMap, syncMeta) {
+  const { dateiname, store, keyFeld, spalten, zuCsvZeile, vonCsvZeile } = konfig;
+  const pfad = '/' + dateiname;
+  const meta = metaMap.get(dateiname);
+  const serverModifiedMs = meta ? (Date.parse(meta.server_modified) || 0) : 0;
+
+  const lokaleListe = await dbAllesLesen(store);
+  const lokaleMap = new Map(lokaleListe.map(z => [String(z[keyFeld]), z]));
+
+  /* Download nur, wenn Datei existiert und ihre rev sich geaendert hat. */
+  const revUnveraendert = meta && meta.rev === syncMeta.revs[dateiname];
+  const dropboxMap = new Map();
+  let heruntergeladen = false;
+  if (meta && !revUnveraendert) {
+    const inhalt = await dropboxDateiHerunterladen(pfad);
+    heruntergeladen = true;
+    for (const roh of csvParsen(inhalt)) {
+      const norm = vonCsvZeile(roh, meta.server_modified);
+      const schluessel = norm[keyFeld];
+      if (schluessel !== undefined && schluessel !== '') {
+        dropboxMap.set(String(schluessel), norm);
+      }
+    }
+  }
+
+  const ergebnis = zeilenMergen(lokaleMap, dropboxMap, serverModifiedMs);
+
+  /* Kanonische CSV (deterministisch sortiert) — stabiler Vergleich. */
+  const sortiert = Array.from(ergebnis.values())
+    .sort((a, b) => String(a[keyFeld]).localeCompare(String(b[keyFeld])));
+  const neueCsv = csvSchreiben(spalten, sortiert.map(zuCsvZeile));
+
+  const lokaleAenderungen = lokaleListe.some(z =>
+    z.sync_status === 'neu' || z.sync_status === 'geaendert');
+
+  /* Upload-Entscheidung */
+  let mussHochladen;
+  if (!meta) {
+    mussHochladen = ergebnis.size > 0;
+  } else if (revUnveraendert) {
+    mussHochladen = lokaleAenderungen;
+  } else {
+    const dropboxCsv = csvSchreiben(spalten,
+      Array.from(dropboxMap.values())
+        .sort((a, b) => String(a[keyFeld]).localeCompare(String(b[keyFeld])))
+        .map(zuCsvZeile));
+    mussHochladen = lokaleAenderungen || (neueCsv !== dropboxCsv);
+  }
+
+  let neueRev = meta ? meta.rev : null;
+  if (mussHochladen) {
+    /* SICHERHEIT: erst Backup, dann Ueberschreiben. */
+    if (meta) await backupAnlegen(dateiname, pfad);
+    const antwort = await dropboxDateiHochladen(pfad, neueCsv);
+    neueRev = antwort.rev;
+  }
+  syncMeta.revs[dateiname] = neueRev;
+
+  /* Lokale DB an das Merge-Ergebnis angleichen und als synchronisiert
+     markieren (nur noetig, wenn etwas hoch- oder heruntergeladen wurde). */
+  if (mussHochladen || heruntergeladen) {
+    const neueSaetze = sortiert.map(z => ({ ...z, sync_status: 'synchronisiert' }));
+    await dbMassenSchreiben(store, neueSaetze);
+  }
+
+  return { hochgeladen: mussHochladen, heruntergeladen };
+}
+
+/* -- Synchronisierung der Eigengerichte (02, denormalisiert) ---- */
+
+/**
+ * Sondersync fuer 02: Es propagieren NUR die gramm_pro_*-Werte (je
+ * gericht_id). Die Zutaten-Inhalte gelten als von Dropbox autoritativ
+ * und werden in der App nicht editiert (RQ-2). Die CSV wird aus den
+ * lokalen Zutaten + den gemergten gramm_pro_* kanonisch neu gebaut;
+ * die gramm_pro_* stehen nur auf der ersten Zutat-Zeile je Gericht.
+ */
+async function syncDateiEigengerichte(metaMap, syncMeta) {
+  const dateiname = '02_Stammdaten_Eigengerichte.csv';
+  const pfad = '/' + dateiname;
+  const meta = metaMap.get(dateiname);
+  const serverModifiedMs = meta ? (Date.parse(meta.server_modified) || 0) : 0;
+  const einheitenFelder = Object.values(EINHEIT_ZU_FELD);
+
+  const gerichte = await dbAllesLesen('eigengerichte');
+  const zutaten  = await dbAllesLesen('zutaten');
+  const gerichteMap = new Map(gerichte.map(g => [g.gericht_id, g]));
+
+  /* gramm_pro_* je gericht_id aus der Dropbox-CSV einsammeln */
+  const revUnveraendert = meta && meta.rev === syncMeta.revs[dateiname];
+  const dropboxGramm = new Map();
+  if (meta && !revUnveraendert) {
+    const inhalt = await dropboxDateiHerunterladen(pfad);
+    for (const roh of csvParsen(inhalt)) {
+      const gid = roh.gericht_id;
+      if (!gid) continue;
+      if (!dropboxGramm.has(gid)) dropboxGramm.set(gid, {});
+      const ziel = dropboxGramm.get(gid);
+      for (const feld of einheitenFelder) {
+        if (roh[feld] !== undefined && roh[feld] !== '' &&
+            (ziel[feld] === undefined || ziel[feld] === '')) {
+          ziel[feld] = roh[feld];
+        }
+      }
+    }
+  }
+
+  /* gramm_pro_* mergen: Dropbox gewinnt nur, wenn die lokale Aenderung
+     aelter ist als die Dropbox-Datei. Lokale Werte werden ggf. ueber-
+     schrieben und im Store aktualisiert (kommt der Einheiten-Logik
+     auf diesem Geraet zugute). */
+  let lokalGeaendert = false;
+  for (const gericht of gerichte) {
+    const dGramm = dropboxGramm.get(gericht.gericht_id);
+    const lZeit = gericht.geaendert_am ? (Date.parse(gericht.geaendert_am) || 0) : 0;
+    if (dGramm && lZeit < serverModifiedMs) {
+      let geaendert = false;
+      for (const feld of einheitenFelder) {
+        const neu = dGramm[feld] !== undefined ? dGramm[feld] : '';
+        if ((gericht[feld] || '') !== neu) { gericht[feld] = neu; geaendert = true; }
+      }
+      if (geaendert) {
+        gericht.sync_status = 'synchronisiert';
+        await dbSchreiben('eigengerichte', gericht);
+      }
+    }
+    if (gericht.sync_status === 'neu' || gericht.sync_status === 'geaendert') lokalGeaendert = true;
+  }
+
+  /* Zutaten je Gericht gruppieren und nach zutat_nr sortieren */
+  const zutatenNachGericht = new Map();
+  for (const z of zutaten) {
+    if (!zutatenNachGericht.has(z.gericht_id)) zutatenNachGericht.set(z.gericht_id, []);
+    zutatenNachGericht.get(z.gericht_id).push(z);
+  }
+  const alleIds = Array.from(gerichteMap.keys()).sort();
+
+  /* Hilfsfunktion: baut die 02-Zeilen mit einer bestimmten Gramm-Quelle */
+  const csvZeilenBauen = (grammQuelle) => {
+    const zeilen = [];
+    for (const gid of alleIds) {
+      const gericht = gerichteMap.get(gid);
+      const liste = (zutatenNachGericht.get(gid) || []).slice()
+        .sort((a, b) => (parseInt(a.zutat_nr) || 0) - (parseInt(b.zutat_nr) || 0));
+      liste.forEach((z, idx) => {
+        const istErste = idx === 0;
+        const gramm = grammQuelle(gid);
+        const zeile = {
+          gericht_id: gid,
+          gericht_name: gericht.gericht_name || '',
+          gericht_kategorie: gericht.gericht_kategorie || '',
+          gericht_original_kategorie: gericht.gericht_original_kategorie || '',
+          gericht_endgewicht_g: gericht.gericht_endgewicht_g || '',
+          zutat_nr: z.zutat_nr,
+          zutat_lebensmittel_id: z.zutat_lebensmittel_id || '',
+          zutat_lebensmittel_name_original: z.zutat_lebensmittel_name_original || '',
+          zutat_menge_g: z.zutat_menge_g || '',
+        };
+        for (const feld of einheitenFelder) {
+          zeile[feld] = istErste ? (gramm[feld] || '') : '';
+        }
+        zeilen.push(zeile);
+      });
+    }
+    return zeilen;
+  };
+
+  const neueCsv = csvSchreiben(CSV_SPALTEN_02, csvZeilenBauen(gid => gerichteMap.get(gid)));
+
+  /* Upload-Entscheidung */
+  let mussHochladen;
+  if (!meta) {
+    mussHochladen = alleIds.length > 0;
+  } else if (revUnveraendert) {
+    mussHochladen = lokalGeaendert;
+  } else {
+    const dropboxCsv = csvSchreiben(CSV_SPALTEN_02, csvZeilenBauen(gid => dropboxGramm.get(gid) || {}));
+    mussHochladen = lokalGeaendert || (neueCsv !== dropboxCsv);
+  }
+
+  let neueRev = meta ? meta.rev : null;
+  if (mussHochladen) {
+    if (meta) await backupAnlegen(dateiname, pfad);
+    const antwort = await dropboxDateiHochladen(pfad, neueCsv);
+    neueRev = antwort.rev;
+    for (const gericht of gerichte) {
+      if (gericht.sync_status === 'neu' || gericht.sync_status === 'geaendert') {
+        gericht.sync_status = 'synchronisiert';
+        await dbSchreiben('eigengerichte', gericht);
+      }
+    }
+  }
+  syncMeta.revs[dateiname] = neueRev;
+}
+
+/* -- Voller Sync-Ablauf ----------------------------------------- */
+
+/**
+ * Fuehrt einen vollstaendigen Sync aller vier Datendateien aus.
+ * Durch die Sperre syncLaeuftGerade laeuft nie mehr als ein Sync
+ * gleichzeitig (App-Start, Debounce und manueller Knopf teilen sie).
+ * @param {string} ausloeser - "appstart" | "erfassung" | "manuell"
+ * @returns {Promise<Object>} - { status: 'ok'|'offline'|'uebersprungen'|'fehler' }
+ */
+async function vollSync(ausloeser) {
+  if (syncLaeuftGerade) return { status: 'uebersprungen' };
+  if (!navigator.onLine) { syncStatusSetzen('offline'); return { status: 'offline' }; }
+
+  /* Ohne Anmeldung kein Sync. */
+  const tokens = await tokensLaden();
+  if (!tokens) return { status: 'keine-anmeldung' };
+
+  syncLaeuftGerade = true;
+  syncStatusSetzen('laeuft');
+  try {
+    const metaMap  = await dropboxOrdnerMetadaten('');
+    const syncMeta = await syncMetaHolen();
+
+    /* Reihenfolge: zuerst die Tagesdaten, dann die Stammdaten. */
+    await syncRowDatei({
+      dateiname: '03_Erfassung.csv', store: 'erfassung', keyFeld: 'erfassungs_id',
+      spalten: CSV_SPALTEN_03, zuCsvZeile: erfassungZuCsvZeile, vonCsvZeile: csvZeileZuErfassung,
+    }, metaMap, syncMeta);
+
+    await syncRowDatei({
+      dateiname: '04_Vitaldaten.csv', store: 'vitaldaten', keyFeld: 'datum',
+      spalten: CSV_SPALTEN_04, zuCsvZeile: vitaldatenZuCsvZeile, vonCsvZeile: csvZeileZuVitaldaten,
+    }, metaMap, syncMeta);
+
+    await syncRowDatei({
+      dateiname: '01_Stammdaten_Lebensmittel.csv', store: 'lebensmittel', keyFeld: 'lebensmittel_id',
+      spalten: CSV_SPALTEN_01, zuCsvZeile: lebensmittelZuCsvZeile, vonCsvZeile: csvZeileZuLebensmittel,
+    }, metaMap, syncMeta);
+
+    await syncDateiEigengerichte(metaMap, syncMeta);
+
+    /* Sync-Metadaten + Zeitstempel sichern */
+    if (letzteSicherungMs) syncMeta.letzte_sicherung = letzteSicherungMs;
+    await syncMetaSpeichern(syncMeta);
+
+    const cfg = (await dbLesen('meta', 'config')) || { schluessel: 'config' };
+    cfg.zuletzt_synchronisiert = Date.now();
+    await dbSchreiben('meta', cfg);
+
+    /* Caches verwerfen, damit die UI den gemergten Stand zeigt. */
+    lebensmittelCache = null;
+    gerichteCache = null;
+
+    syncStatusSetzen('synchron');
+    return { status: 'ok' };
+  } catch (fehler) {
+    /* Token endgueltig ungueltig → Anmeldung erforderlich */
+    const text = String(fehler && fehler.message || fehler);
+    if (/401|expired_access_token|invalid_access_token|Token-Erneuerung/i.test(text)) {
+      syncStatusSetzen('anmeldung');
+    } else {
+      syncStatusSetzen('fehler');
+    }
+    return { status: 'fehler', fehler: text };
+  } finally {
+    syncLaeuftGerade = false;
+  }
+}
+
+/* -- Sync-Ausloeser --------------------------------------------- */
+
+/**
+ * Stoesst nach einer Erfassung/Vitaldaten-Aenderung einen Upload-Sync
+ * mit 60-s-Sammelverzoegerung an (debounce: erneute Erfassung setzt
+ * den Timer zurueck).
+ */
+function syncAnstossenNachErfassung() {
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncDebounceTimer = null;
+    vollSync('erfassung').then(() => {
+      /* Falls gerade die Einstellungen offen sind, Anzeige auffrischen. */
+      if (document.getElementById('ansicht-einstellungen').classList.contains('aktiv')) {
+        einstellungenLaden().catch(() => {});
+      }
+    }).catch(() => { /* Status zeigt den Fehler */ });
+  }, SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * App-Start-Sync (download-orientiert): holt den aktuellen Stand,
+ * merged, und laedt danach die aktive Ansicht neu. Laeuft im
+ * Hintergrund (blockiert den Start nicht).
+ */
+async function appStartSyncAnstossen() {
+  if (!navigator.onLine) { syncStatusSetzen('offline'); return; }
+  const tokens = await tokensLaden();
+  if (!tokens) return;
+  if ((await dbZaehlen('lebensmittel')) === 0) return;   /* erst nach Erst-Import */
+  const ergebnis = await vollSync('appstart');
+  if (ergebnis.status === 'ok') {
+    /* Aktive Ansicht mit dem gemergten Stand neu rendern. */
+    routeVerarbeiten().catch(() => {});
+  }
+}
+
+/* -- Sync-Status-Anzeige ---------------------------------------- */
+
+/**
+ * Setzt den aktuellen Sync-Status und aktualisiert die Anzeige.
+ */
+function syncStatusSetzen(status) {
+  letzterSyncStatus = status;
+  syncStatusAnzeigen();
+}
+
+/**
+ * Aktualisiert die Status-Zeile in den Einstellungen anhand von
+ * Online-Zustand und letztem Sync-Ergebnis.
+ */
+function syncStatusAnzeigen() {
+  const el = document.getElementById('einst-online-status');
+  if (!el) return;
+  el.classList.remove('erfolg', 'warnung', 'gefahr');
+
+  let text, klasse = null;
+  if (!navigator.onLine) {
+    text = '○ offline';
+  } else {
+    switch (letzterSyncStatus) {
+      case 'synchron':  text = '● synchron';            klasse = 'erfolg';  break;
+      case 'laeuft':    text = 'Synchronisiere …';                          break;
+      case 'ausstehend': text = 'Änderungen ausstehend'; klasse = 'warnung'; break;
+      case 'fehler':    text = 'Sync-Fehler';            klasse = 'gefahr';  break;
+      case 'anmeldung': text = 'Anmeldung erforderlich'; klasse = 'gefahr';  break;
+      default:          text = '○ bereit';
+    }
+  }
+  el.textContent = text;
+  if (klasse) el.classList.add(klasse);
 }
 
 /* ----------------------------------------------------------------
@@ -2488,7 +3270,7 @@ function ereignisListenerRegistrieren() {
     navigieren('');
   });
 
-  /* Jetzt synchronisieren */
+  /* Jetzt synchronisieren — voller Zwei-Wege-Sync (Phase F) */
   document.getElementById('knopf-synchronisieren').addEventListener('click', async () => {
     if (!navigator.onLine) {
       fehlermeldungAnzeigen('Keine Internetverbindung — Synchronisierung nicht möglich.');
@@ -2498,10 +3280,12 @@ function ereignisListenerRegistrieren() {
     knopf.disabled = true;
     knopf.textContent = 'Synchronisiere…';
     try {
-      lebensmittelCache = null;
-      gerichteCache = null;
-      konfigCache = null;
-      await allesDatenImportieren(null);
+      const ergebnis = await vollSync('manuell');
+      if (ergebnis.status === 'fehler') {
+        fehlermeldungAnzeigen('Synchronisierung fehlgeschlagen: ' + (ergebnis.fehler || 'unbekannt'));
+      } else if (ergebnis.status === 'offline') {
+        fehlermeldungAnzeigen('Keine Internetverbindung — Synchronisierung nicht möglich.');
+      }
       await einstellungenLaden();
     } catch (fehler) {
       fehlermeldungAnzeigen('Synchronisierung fehlgeschlagen: ' + fehler.message);
@@ -2527,7 +3311,11 @@ function ereignisListenerRegistrieren() {
       lebensmittelCache = null;
       gerichteCache = null;
       konfigCache = null;
+      /* Harter Stammdaten-Neuaufbau (laedt 01/02/05 frisch und bewahrt
+         lokale Einheiten-Werte). Danach normaler Sync, damit auch
+         Erfassungen/Vitaldaten anderer Geraete wieder hereinkommen. */
       await allesDatenImportieren(null);
+      await vollSync('manuell');
       await einstellungenLaden();
     } catch (fehler) {
       fehlermeldungAnzeigen('Neuaufbau fehlgeschlagen: ' + fehler.message);
@@ -2602,6 +3390,11 @@ async function appStarten() {
 
   /* Aktuelle Route rendern */
   await routeVerarbeiten();
+
+  /* Phase F: App-Start-Sync im Hintergrund (blockiert den Start nicht).
+     Holt den aktuellen Dropbox-Stand, merged ihn ein und frischt die
+     Ansicht auf. Fehler werden im Status angezeigt, nicht als Popup. */
+  appStartSyncAnstossen().catch(() => {});
 }
 
 /* App starten sobald der DOM fertig ist */
