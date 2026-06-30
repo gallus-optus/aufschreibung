@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase F — Mockup Dropbox-Sync</title>
+<style>
+:root {
+  --bg-page:#FAFAFA; --surface-1:#F5F5F4; --surface-2:#FFF;
+  --text-primary:#1A1A1A; --text-secondary:#6B6B6B; --text-muted:#999;
+  --text-accent:#0061FF; --text-success:#1D9E75; --border:#E5E5E5;
+  --border-strong:#D4D4D4; --radius:8px;
+  --blau:#185FA5; --teal:#0F6E56; --amber:#854F0B; --grau:#5F5E5A;
+  --bg-blau:#E6F1FB; --bg-teal:#E1F5EE; --bg-amber:#FAEEDA; --bg-grau:#F1EFE8;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:#1A1A1A; --surface-1:#2A2A2A; --surface-2:#2E2E2E;
+    --text-primary:#F0F0F0; --text-secondary:#BBB; --text-muted:#888;
+    --text-accent:#5DA9F0; --text-success:#5DCAA5; --border:#3A3A3A;
+    --border-strong:#4A4A4A;
+    --blau:#85B7EB; --teal:#5DCAA5; --amber:#EF9F27; --grau:#B4B2A9;
+    --bg-blau:#1E3A5C; --bg-teal:#1A3D32; --bg-amber:#4A3811; --bg-grau:#333;
+  }
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:var(--bg-page); color:var(--text-primary); font-family:var(--font-sans); font-size:15px; line-height:1.6; }
+.page { max-width:800px; margin:0 auto; padding:32px 20px 80px; }
+h1 { font-size:24px; font-weight:500; margin:0 0 8px; }
+h2 { font-size:18px; font-weight:500; margin:36px 0 12px; }
+.intro { background:var(--surface-1); border-radius:var(--radius); padding:16px 20px; margin-bottom:24px; font-size:14px; color:var(--text-secondary); line-height:1.7; }
+.intro p { margin:0 0 8px; } .intro p:last-child { margin:0; } .intro strong { color:var(--text-primary); font-weight:500; }
+
+.steps { display:flex; flex-direction:column; gap:10px; max-width:420px; margin:0 auto 24px; }
+.step { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:var(--radius); }
+.step .num { width:26px; height:26px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; }
+.step .txt { font-size:13px; } .step .txt b { display:block; font-size:14px; margin-bottom:2px; font-weight:500; color:var(--text-primary); }
+.s-blau { background:var(--bg-blau); } .s-blau .num { background:var(--blau); color:#fff; } .s-blau .txt { color:var(--blau); }
+.s-grau { background:var(--bg-grau); } .s-grau .num { background:var(--grau); color:#fff; } .s-grau .txt { color:var(--grau); }
+.s-teal { background:var(--bg-teal); } .s-teal .num { background:var(--teal); color:#fff; } .s-teal .txt { color:var(--teal); }
+.s-amber { background:var(--bg-amber); } .s-amber .num { background:var(--amber); color:#fff; } .s-amber .txt { color:var(--amber); }
+
+.mf-wrap { display:flex; justify-content:center; padding:8px 0; }
+.mf-phone { width:340px; background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:22px; overflow:hidden; }
+.mf-status { background:var(--surface-1); padding:6px 16px; display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); font-weight:500; }
+.mf-head { padding:14px 16px 12px; border-bottom:0.5px solid var(--border); font-size:17px; font-weight:500; }
+.mf-content { padding:16px; }
+.mf-sttitle { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin:0 0 4px; font-weight:500; }
+.mf-sttitle.mt { margin-top:18px; }
+.mf-strow { display:flex; justify-content:space-between; padding:9px 0; border-bottom:0.5px solid var(--border); font-size:13px; }
+.mf-strow .lab { color:var(--text-secondary); }
+.mf-strow .val { font-variant-numeric:tabular-nums; }
+.mf-stact { padding:11px 0; color:var(--text-accent); cursor:pointer; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Phase F — Mockup Dropbox-Sync</h1>
+
+<div class="intro">
+<p><strong>Was ist das?</strong> Phase F schaltet den Zwei-Wege-Sync mit Dropbox scharf. Sie ist überwiegend technisch — sichtbar ändert sich nur der Sync-Status in den Einstellungen. Hier siehst Du den Ablauf und die kleine UI-Änderung.</p>
+<p><strong>Wichtig:</strong> Ab Phase F sind Deine Daten gesichert und über Geräte synchron. Die heikelste Phase, deshalb mit rollierendem Backup abgesichert.</p>
+</div>
+
+<h2>Der Sync-Ablauf in sechs Schritten</h2>
+
+<div class="steps">
+<div class="step s-blau"><div class="num">1</div><div class="txt"><b>Auslöser</b>App-Start (lädt herunter) oder 60 s nach einer Erfassung (lädt hoch). Plus manueller Knopf.</div></div>
+<div class="step s-grau"><div class="num">2</div><div class="txt"><b>Version prüfen</b>Hat sich die Dropbox-Datei seit dem letzten Stand geändert? (über die Dropbox-Versionskennung)</div></div>
+<div class="step s-teal"><div class="num">3</div><div class="txt"><b>Herunterladen</b>Bei Änderung den aktuellen Dropbox-Stand holen.</div></div>
+<div class="step s-teal"><div class="num">4</div><div class="txt"><b>Zeilenweise mergen</b>Je ID vereinen. Bei echtem Konflikt gewinnt der neuere Zeitstempel.</div></div>
+<div class="step s-amber"><div class="num">5</div><div class="txt"><b>Backup anlegen</b>Alte Dropbox-Datei in _backups/ sichern. Die letzten 5 Versionen bleiben.</div></div>
+<div class="step s-blau"><div class="num">6</div><div class="txt"><b>Hochladen</b>Den gemergten Stand nach Dropbox speichern.</div></div>
+</div>
+
+<p style="max-width:420px;margin:0 auto 8px;font-size:13px;color:var(--text-secondary);line-height:1.7"><strong style="color:var(--text-primary);font-weight:500">Warum erst herunter, dann hoch?</strong> Sonst würde der eigene Stand die Einträge des anderen Geräts überschreiben. Erst vereinen, dann hochladen — so verliert nie ein Gerät die Daten des anderen.</p>
+
+<h2>Was sich sichtbar ändert: der Sync-Status</h2>
+
+<div class="mf-wrap"><div class="mf-phone">
+<div class="mf-status"><span>18:30</span><span>▲ ▼ 100%</span></div>
+<div class="mf-head">Mehr</div>
+<div class="mf-content">
+<div class="mf-sttitle">Konto</div>
+<div class="mf-strow"><span class="lab">Verbunden als</span><span class="val">gallus.optus@gmail.com</span></div>
+<div class="mf-strow"><span class="lab">Speicher in Dropbox</span><span class="val">0,6 MB / 2 GB</span></div>
+<div class="mf-sttitle mt">Synchronisierung</div>
+<div class="mf-strow"><span class="lab">Status</span><span class="val" style="color:var(--text-success)">● synchron</span></div>
+<div class="mf-strow"><span class="lab">Zuletzt synchronisiert</span><span class="val">vor 3 Min</span></div>
+<div class="mf-strow"><span class="lab">Offene Änderungen</span><span class="val">0</span></div>
+<div class="mf-stact">↻ Jetzt synchronisieren</div>
+<div class="mf-sttitle mt">Sicherungen</div>
+<div class="mf-strow"><span class="lab">Letzte Sicherung</span><span class="val">heute 18:27</span></div>
+<div class="mf-strow"><span class="lab">Behaltene Versionen</span><span class="val">5</span></div>
+<div class="mf-sttitle mt">Lokale Datenbank</div>
+<div class="mf-strow"><span class="lab">Lebensmittel</span><span class="val">597</span></div>
+<div class="mf-strow"><span class="lab">Eigengerichte</span><span class="val">221</span></div>
+<div class="mf-strow"><span class="lab">Erfassungen</span><span class="val">142</span></div>
+</div>
+</div></div>
+
+<p style="max-width:540px;margin:16px auto 0;font-size:13px;color:var(--text-secondary);line-height:1.7">Mehr ist nicht nötig. Kein Sync-Protokoll, keine Konflikt-Anzeige — der Sync arbeitet im Hintergrund. Der Status-Abschnitt zeigt nur, ob alles synchron ist, wann zuletzt synchronisiert wurde, und wie viele Änderungen noch offen sind. Der Knopf erzwingt einen sofortigen Sync.</p>
+
+</div>
+</body>
+</html>
