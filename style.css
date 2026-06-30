@@ -1118,6 +1118,17 @@ body {
   border-color: var(--border-akzent);
 }
 
+/* Natives Zeit-Eingabefeld (type="time"): Standard-Darstellung behalten,
+   damit der Auswahl-Indikator sichtbar und antippbar bleibt. Auf dem
+   Handy oeffnet sich dadurch der Uhrzeit-Picker — kein Doppelpunkt-
+   Tippen noetig. Rahmen, Hintergrund und Polsterung kommen weiter von
+   der Regel oben. */
+.formular-feld input[type="time"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  min-height: 40px;
+}
+
 /* Eigener Dropdown-Pfeil (da appearance:none den nativen entfernt).
    Neutrales Grau, das in hell und dunkel funktioniert. */
 .formular-feld select {
