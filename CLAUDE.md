@@ -237,6 +237,13 @@ Sitzung mit kurzem Funktionstest.
 (6) **Bei Bugs nach Live-Schaltung:** nicht panisch fixen, sondern
 erst dokumentieren, dann reproduzieren, dann beheben.
 
+(7) **Modell- und Aufwandsvorschlag vor Taskbeginn:** Vor jeder
+Aufgabe oder jedem Bauauftrag schlaegt der Coder ein geeignetes
+Modell und einen Aufwand (Effort) vor, um den Tokenverbrauch zu
+optimieren. Anschliessend wartet der Coder, bis der Nutzer das
+Modell und den Aufwand eingestellt und "weiter" eingegeben hat —
+erst dann wird mit der Arbeit begonnen.
+
 ---
 
 ## Konkrete Don'ts
