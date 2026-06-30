@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase C — Mockup Tageseingabe</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg-page:#FAFAFA; --surface-0:#FFF; --surface-1:#F5F5F4; --surface-2:#FFF;
+  --text-primary:#1A1A1A; --text-secondary:#6B6B6B; --text-muted:#999;
+  --text-accent:#0061FF; --bg-accent:#E6F1FB; --border:#E5E5E5;
+  --border-strong:#D4D4D4; --border-accent:#85B7EB; --radius:8px;
+  --dropbox-blue:#0061FF; --gruen:#639922; --gelb:#EF9F27; --rot:#E24B4A; --blau:#378ADD;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"SF Mono",Monaco,"Courier New",monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:#1A1A1A; --surface-0:#222; --surface-1:#2A2A2A; --surface-2:#2E2E2E;
+    --text-primary:#F0F0F0; --text-secondary:#BBB; --text-muted:#888;
+    --text-accent:#5DA9F0; --bg-accent:#1E3A5C; --border:#3A3A3A;
+    --border-strong:#4A4A4A;
+  }
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:var(--bg-page); color:var(--text-primary); font-family:var(--font-sans); font-size:15px; line-height:1.6; }
+.page { max-width:800px; margin:0 auto; padding:32px 20px 80px; }
+h1 { font-size:24px; font-weight:500; margin:0 0 8px; }
+h2 { font-size:18px; font-weight:500; margin:40px 0 12px; }
+.intro { background:var(--surface-1); border-radius:var(--radius); padding:16px 20px; margin-bottom:24px; font-size:14px; color:var(--text-secondary); line-height:1.7; }
+.intro p { margin:0 0 8px; } .intro p:last-child { margin:0; } .intro strong { color:var(--text-primary); font-weight:500; }
+
+.mc-nav { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 24px; justify-content:center; padding:12px; background:var(--surface-1); border-radius:var(--radius); position:sticky; top:0; z-index:10; }
+.mc-nav button { font-size:12px; padding:6px 12px; background:var(--surface-0); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; color:var(--text-secondary); font-family:inherit; }
+.mc-nav button.act { background:var(--bg-accent); color:var(--text-accent); border-color:var(--border-accent); font-weight:500; }
+
+.mc-wrap { display:flex; justify-content:center; margin:0 0 16px; }
+.mc-phone { width:340px; background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:22px; overflow:hidden; }
+.mc-status { background:var(--surface-1); padding:6px 16px; display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); font-weight:500; }
+.mc-status i { font-size:14px; vertical-align:-2px; }
+.mc-head { padding:14px 16px 12px; border-bottom:0.5px solid var(--border); display:flex; align-items:center; gap:10px; }
+.mc-head-title { font-size:17px; font-weight:500; flex:1; }
+.mc-back { background:transparent; border:none; cursor:pointer; color:var(--text-secondary); font-size:20px; padding:0; }
+.mc-content { padding:16px; min-height:470px; max-height:470px; overflow-y:auto; }
+.mc-tabs { display:flex; border-top:0.5px solid var(--border); background:var(--surface-1); align-items:flex-end; }
+.mc-tab { flex:1; padding:8px 2px; text-align:center; color:var(--text-secondary); cursor:pointer; font-size:10px; }
+.mc-tab.act { color:var(--text-accent); font-weight:500; }
+.mc-tab i { display:block; font-size:19px; margin-bottom:2px; }
+.mc-tab-plus { flex:1; text-align:center; }
+.mc-tab-plus .plus-btn { width:46px; height:46px; border-radius:50%; background:var(--dropbox-blue); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:26px; margin-bottom:2px; }
+.mc-explain { margin:8px auto 24px; max-width:540px; padding:14px 18px; background:var(--surface-1); border-radius:var(--radius); font-size:13px; color:var(--text-secondary); line-height:1.7; }
+.mc-explain b { color:var(--text-primary); font-weight:500; }
+
+.mc-ring-wrap { display:flex; flex-direction:column; align-items:center; margin:6px 0 14px; }
+.mc-ring-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+.mc-bar-row { margin:10px 0; }
+.mc-bar-top { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+.mc-bar-top .lab { color:var(--text-secondary); } .mc-bar-top .val { color:var(--text-primary); }
+.mc-bar-track { height:8px; background:var(--surface-1); border-radius:999px; overflow:hidden; }
+.mc-bar-fill { height:100%; border-radius:999px; }
+.mc-sec-title { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin:18px 0 6px; font-weight:500; }
+.mc-meal-head { font-size:12px; color:var(--text-secondary); font-weight:500; margin:12px 0 2px; display:flex; justify-content:space-between; }
+.mc-meal { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid var(--border); font-size:13px; }
+.mc-meal-name { flex:1; } .mc-meal-amt { color:var(--text-muted); font-size:11px; margin-left:6px; }
+.mc-meal-kcal { color:var(--text-secondary); flex-shrink:0; }
+
+.mc-search { position:relative; margin-bottom:12px; }
+.mc-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:16px; }
+.mc-search input { width:100%; padding:8px 12px 8px 32px; box-sizing:border-box; font-size:13px; height:36px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-family:inherit; }
+.mc-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--border); cursor:pointer; }
+.mc-item-name { font-size:13px; flex:1; } .mc-item-meta { font-size:12px; color:var(--text-secondary); }
+
+.mc-field { margin-bottom:14px; }
+.mc-field label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+.mc-field input, .mc-field select { width:100%; box-sizing:border-box; height:38px; padding:0 10px; font-size:14px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-family:inherit; }
+.mc-row2 { display:flex; gap:10px; } .mc-row2 .mc-field { flex:1; }
+.mc-chips { display:flex; gap:6px; margin-bottom:14px; }
+.mc-chip { padding:5px 12px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:999px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
+.mc-chip.act { background:var(--bg-accent); color:var(--text-accent); border-color:var(--border-accent); }
+.mc-btn-primary { width:100%; padding:12px; background:var(--dropbox-blue); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; margin-top:6px; }
+.mc-btn-ghost { width:100%; padding:11px; background:transparent; color:var(--text-secondary); border:0.5px solid var(--border); border-radius:var(--radius); font-size:13px; cursor:pointer; font-family:inherit; margin-top:8px; }
+.mc-popup-back { min-height:470px; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px; }
+.mc-popup { background:var(--surface-2); border-radius:12px; padding:18px; width:100%; max-width:280px; }
+.mc-popup-title { font-size:15px; font-weight:500; margin-bottom:6px; }
+.mc-popup-sub { font-size:12px; color:var(--text-secondary); margin-bottom:14px; line-height:1.5; }
+.mc-result-box { background:var(--surface-1); border-radius:var(--radius); padding:10px 12px; margin-top:8px; font-size:13px; }
+.mc-result-box .big { font-size:22px; font-weight:500; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Phase C — Mockup Tageseingabe</h1>
+
+<div class="intro">
+<p><strong>Was ist das?</strong> Klickbares Mockup der Tageseingabe-Funktionen: Tagesansicht mit Kalorien-Kreis, Mahlzeit-Erfassung mit Einheiten-Logik, Einheiten-Abfrage-Popup, Vitaldaten-Formular und die erweiterte 5-Tab-Navigation.</p>
+<p><strong>Nicht echt:</strong> Daten, Berechnungen, Navigation sind statisch. Visuelle Referenz für den Coder.</p>
+<p><strong>Wichtig:</strong> Phase C schreibt nur lokal (IndexedDB). Das Hochladen nach Dropbox ist Phase F.</p>
+</div>
+
+<h2>Bildschirme durchklicken</h2>
+
+<div class="mc-nav">
+<button data-s="0" class="act">1. Heute</button>
+<button data-s="1">2. Erfassen-Suche</button>
+<button data-s="2">3. Menge + Einheit</button>
+<button data-s="3">4. Einheit-Abfrage</button>
+<button data-s="4">5. Vitalwerte</button>
+<button data-s="5">6. Tab-Bar</button>
+</div>
+
+<div class="mc-screen" data-sid="0">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>18:30</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-head"><div class="mc-head-title">Heute · Di 30.06.</div><i class="ti ti-calendar" style="color:var(--text-secondary)"></i></div>
+<div class="mc-content">
+<div class="mc-ring-wrap">
+<svg width="150" height="150" viewBox="0 0 150 150" role="img"><title>Tageskalorien 1840 von 2400</title>
+<circle cx="75" cy="75" r="62" fill="none" stroke="var(--surface-1)" stroke-width="14"/>
+<circle cx="75" cy="75" r="62" fill="none" stroke="#639922" stroke-width="14" stroke-linecap="round" stroke-dasharray="299 390" transform="rotate(-90 75 75)"/>
+<text x="75" y="70" text-anchor="middle" style="font-size:30px;font-weight:500;fill:var(--text-primary)">1840</text>
+<text x="75" y="90" text-anchor="middle" style="font-size:12px;fill:var(--text-secondary)">von 2400 kcal</text>
+</svg>
+<div class="mc-ring-sub">noch 560 kcal im grünen Bereich</div>
+</div>
+<div class="mc-bar-row">
+<div class="mc-bar-top"><span class="lab"><i class="ti ti-droplet" style="font-size:13px;vertical-align:-2px"></i> Trinkmenge</span><span class="val">1,4 / 2,0 L</span></div>
+<div class="mc-bar-track"><div class="mc-bar-fill" style="width:70%;background:#378ADD"></div></div>
+</div>
+<div class="mc-sec-title">Mahlzeiten heute</div>
+<div class="mc-meal-head"><span>Morgens</span><span>410 kcal</span></div>
+<div class="mc-meal"><span class="mc-meal-name">Brötchen Panini<span class="mc-meal-amt">160 g</span></span><span class="mc-meal-kcal">400 kcal</span></div>
+<div class="mc-meal"><span class="mc-meal-name">Kaffee schwarz<span class="mc-meal-amt">200 ml</span></span><span class="mc-meal-kcal">10 kcal</span></div>
+<div class="mc-meal-head"><span>Mittags</span><span>980 kcal</span></div>
+<div class="mc-meal"><span class="mc-meal-name">Quetschkartoffeln 01<span class="mc-meal-amt">1 Portion · 690 g</span></span><span class="mc-meal-kcal">980 kcal</span></div>
+<div class="mc-meal-head"><span>Abends</span><span>450 kcal</span></div>
+<div class="mc-meal"><span class="mc-meal-name">Aufschnitt Jagdwurst<span class="mc-meal-amt">3 Scheiben · 66 g</span></span><span class="mc-meal-kcal">170 kcal</span></div>
+<div class="mc-meal"><span class="mc-meal-name">Brot Vollkorn<span class="mc-meal-amt">120 g</span></span><span class="mc-meal-kcal">264 kcal</span></div>
+</div>
+<div class="mc-tabs">
+<div class="mc-tab act"><i class="ti ti-home"></i>Heute</div>
+<div class="mc-tab"><i class="ti ti-heart-rate-monitor"></i>Vitalwerte</div>
+<div class="mc-tab-plus"><span class="plus-btn"><i class="ti ti-plus"></i></span></div>
+<div class="mc-tab"><i class="ti ti-database"></i>Datenbank</div>
+<div class="mc-tab"><i class="ti ti-settings"></i>Mehr</div>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 1 — Heute.</b> Neuer Startbildschirm. Kalorien-Kreis (grün bis 2200, gelb bis 2400, rot darüber), Trinkmengen-Balken gegen 2-Liter-Ziel, heutige Mahlzeiten nach Typ gruppiert mit Menge und Einheit. Antippen eines Eintrags öffnet ihn zum Bearbeiten/Löschen.</div>
+</div>
+
+<div class="mc-screen" data-sid="1" style="display:none">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>18:31</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-head"><button class="mc-back"><i class="ti ti-x"></i></button><div class="mc-head-title">Erfassen</div></div>
+<div class="mc-content">
+<div class="mc-chips"><span class="mc-chip act">Lebensmittel</span><span class="mc-chip">Gerichte</span></div>
+<div class="mc-search"><i class="ti ti-search"></i><input type="text" value="hack" placeholder="Suchen ..."></div>
+<div class="mc-item"><span class="mc-item-name">Hackfleisch gemischt</span><span class="mc-item-meta">230 kcal</span></div>
+<div class="mc-item"><span class="mc-item-name">Hackfleisch Rind</span><span class="mc-item-meta">212 kcal</span></div>
+<div class="mc-item"><span class="mc-item-name">Schweinehack</span><span class="mc-item-meta">258 kcal</span></div>
+<div class="mc-item"><span class="mc-item-name">Hackbällchen fertig</span><span class="mc-item-meta">240 kcal</span></div>
+<div class="mc-item"><span class="mc-item-name">Hackbraten Scheibe</span><span class="mc-item-meta">198 kcal</span></div>
+</div>
+<div class="mc-tabs">
+<div class="mc-tab"><i class="ti ti-home"></i>Heute</div>
+<div class="mc-tab"><i class="ti ti-heart-rate-monitor"></i>Vitalwerte</div>
+<div class="mc-tab-plus"><span class="plus-btn"><i class="ti ti-plus"></i></span></div>
+<div class="mc-tab"><i class="ti ti-database"></i>Datenbank</div>
+<div class="mc-tab"><i class="ti ti-settings"></i>Mehr</div>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 2 — Erfassen Schritt 1.</b> Nach Tippen auf "+". Umschalter Lebensmittel/Gerichte, Live-Suche: "hack" zeigt alle Treffer. Antippen führt zu Schritt 2.</div>
+</div>
+
+<div class="mc-screen" data-sid="2" style="display:none">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>18:31</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-head"><button class="mc-back"><i class="ti ti-arrow-left"></i></button><div class="mc-head-title">Menge eingeben</div></div>
+<div class="mc-content">
+<div style="text-align:center;margin:4px 0 16px">
+<div style="font-size:17px;font-weight:500">Aufschnitt Jagdwurst</div>
+<div style="font-size:12px;color:var(--text-secondary)">258 kcal pro 100 g</div>
+</div>
+<div class="mc-row2">
+<div class="mc-field"><label>Menge</label><input type="text" value="3"></div>
+<div class="mc-field"><label>Einheit</label>
+<select><option>Gramm</option><option selected>Scheibe</option><option>Stück</option><option>Portion</option><option>Esslöffel</option><option>Teelöffel</option></select>
+</div>
+</div>
+<div class="mc-result-box">
+<div style="color:var(--text-secondary);font-size:12px">Ergibt</div>
+<div class="big">66 g · 170 kcal</div>
+<div style="color:var(--text-muted);font-size:11px;margin-top:2px">1 Scheibe = 22 g (gespeichert)</div>
+</div>
+<div class="mc-field" style="margin-top:14px"><label>Mahlzeit-Typ</label>
+<select><option>Morgens</option><option>Mittags</option><option selected>Abends</option><option>Zwischen</option><option>Naschen</option><option>Trinken</option></select>
+</div>
+<div class="mc-field"><label>Uhrzeit</label><input type="text" value="18:31"></div>
+<button class="mc-btn-primary">Zur Aufschreibung hinzufügen</button>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 3 — Erfassen Schritt 2.</b> Menge plus Einheit-Dropdown (alle sechs). "3 Scheiben" → App kennt "1 Scheibe = 22 g" → live 66 g / 170 kcal. Mahlzeit-Typ automatisch aus Uhrzeit (18:31 → Abends), änderbar. Gespeichert wird der Gramm-Wert.</div>
+</div>
+
+<div class="mc-screen" data-sid="3" style="display:none">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>18:32</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-popup-back">
+<div class="mc-popup">
+<div class="mc-popup-title">Wie viel wiegt eine Portion?</div>
+<div class="mc-popup-sub">Für "Quetschkartoffeln 01" ist noch kein Gewicht für eine Portion hinterlegt. Gib es einmalig an — es wird gespeichert und künftig automatisch genutzt.</div>
+<div class="mc-field"><label>Gewicht einer Portion in Gramm</label><input type="text" value="690"></div>
+<button class="mc-btn-primary">Speichern und weiter</button>
+<button class="mc-btn-ghost">Abbrechen</button>
+</div>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 4 — Einheit-Abfrage.</b> Erscheint bei einer Einheit ohne hinterlegten Wert. Der eingegebene Wert (690 g) wird mit dem Lebensmittel/Gericht gespeichert und künftig automatisch genutzt. Gilt für Stück, Portion, Scheibe, Esslöffel, Teelöffel.</div>
+</div>
+
+<div class="mc-screen" data-sid="4" style="display:none">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>07:15</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-head"><div class="mc-head-title">Vitalwerte · Di 30.06.</div><i class="ti ti-calendar" style="color:var(--text-secondary)"></i></div>
+<div class="mc-content">
+<div class="mc-field"><label>Gewicht (kg)</label><input type="text" value="84,2"></div>
+<div class="mc-row2"><div class="mc-field"><label>Bauchumfang (cm)</label><input type="text" value="98"></div><div class="mc-field"><label>Armumfang (cm)</label><input type="text" value="34"></div></div>
+<div class="mc-row2"><div class="mc-field"><label>Blutdruck systol.</label><input type="text" value="128"></div><div class="mc-field"><label>Blutdruck diastol.</label><input type="text" value="82"></div></div>
+<div class="mc-row2"><div class="mc-field"><label>Puls</label><input type="text" value="64"></div><div class="mc-field"><label>k-Faktor</label><input type="text" value=""></div></div>
+<div class="mc-field"><label>Bemerkung</label><input type="text" placeholder="optional"></div>
+<button class="mc-btn-primary">Vitalwerte speichern</button>
+</div>
+<div class="mc-tabs">
+<div class="mc-tab"><i class="ti ti-home"></i>Heute</div>
+<div class="mc-tab act"><i class="ti ti-heart-rate-monitor"></i>Vitalwerte</div>
+<div class="mc-tab-plus"><span class="plus-btn"><i class="ti ti-plus"></i></span></div>
+<div class="mc-tab"><i class="ti ti-database"></i>Datenbank</div>
+<div class="mc-tab"><i class="ti ti-settings"></i>Mehr</div>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 5 — Vitalwerte.</b> Alle Felder optional. Ein Eintrag pro Tag; vorhandene Werte werden vorbefüllt und beim Speichern überschrieben. Deutsche Dezimalkommas (84,2).</div>
+</div>
+
+<div class="mc-screen" data-sid="5" style="display:none">
+<div class="mc-wrap"><div class="mc-phone">
+<div class="mc-status"><span>18:30</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="mc-content" style="min-height:auto;max-height:none;padding:30px 16px">
+<div style="text-align:center;color:var(--text-secondary);font-size:13px;margin-bottom:20px">Die neue Tab-Bar im Detail</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:36px;text-align:center;color:var(--text-accent)"><i class="ti ti-home" style="font-size:22px"></i></span><div><div style="font-size:14px;font-weight:500">Heute</div><div style="font-size:12px;color:var(--text-secondary)">Tagesbilanz, Kalorien-Kreis, Mahlzeiten</div></div></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:36px;text-align:center;color:var(--text-secondary)"><i class="ti ti-heart-rate-monitor" style="font-size:22px"></i></span><div><div style="font-size:14px;font-weight:500">Vitalwerte</div><div style="font-size:12px;color:var(--text-secondary)">Tägliches Vitaldaten-Formular</div></div></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:46px;text-align:center"><span style="display:inline-flex;width:40px;height:40px;border-radius:50%;background:var(--dropbox-blue);color:#fff;align-items:center;justify-content:center"><i class="ti ti-plus" style="font-size:22px"></i></span></span><div><div style="font-size:14px;font-weight:500">Erfassen</div><div style="font-size:12px;color:var(--text-secondary)">Mahlzeit hinzufügen (Suche → Menge → speichern)</div></div></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:36px;text-align:center;color:var(--text-secondary)"><i class="ti ti-database" style="font-size:22px"></i></span><div><div style="font-size:14px;font-weight:500">Datenbank</div><div style="font-size:12px;color:var(--text-secondary)">Lebensmittel und Gerichte (aus Phase B2)</div></div></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:36px;text-align:center;color:var(--text-secondary)"><i class="ti ti-settings" style="font-size:22px"></i></span><div><div style="font-size:14px;font-weight:500">Mehr</div><div style="font-size:12px;color:var(--text-secondary)">Einstellungen, Sync-Status, Konto</div></div></div>
+</div>
+</div>
+</div></div>
+<div class="mc-explain"><b>Bildschirm 6 — Navigation.</b> Fünf Einstiegspunkte. "Heute" ist Start, "Erfassen" (zentrales blaues Plus) die häufigste Aktion. "Datenbank" fasst die B2-Listen zusammen, "Mehr" enthält die Einstellungen.</div>
+</div>
+
+</div>
+<script>
+(function(){
+  var screens=document.querySelectorAll('.mc-screen');
+  var buttons=document.querySelectorAll('.mc-nav button');
+  function show(id){
+    screens.forEach(function(s){ s.style.display=(s.dataset.sid===id)?'':'none'; });
+    buttons.forEach(function(b){ b.classList.toggle('act', b.dataset.s===id); });
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  buttons.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.s); }); });
+})();
+</script>
+</body>
+</html>
