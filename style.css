@@ -37,6 +37,12 @@
   --gefahr-text:    #A32D2D;
   --gefahr-bg:      #FCEBEB;
 
+  /* -- Diagrammfarben (Kalorien-Ring, Trinkmengen-Balken) ------- */
+  --gruen: #639922;   /* im gruenen Bereich (bis kcal_gruen_bis) */
+  --gelb:  #EF9F27;   /* gelb (bis Tagesziel) */
+  --rot:   #E24B4A;   /* rot (ueber Tagesziel) */
+  --blau:  #378ADD;   /* Trinkmengen-Balken */
+
   /* -- Linien --------------------------------------------------- */
   --border:         #E5E5E5;
   --border-stark:   #D4D4D4;
@@ -886,4 +892,380 @@ body {
   text-align: center;
   color: var(--text-gedaempft);
   font-size: 14px;
+}
+
+/* Hinweis am Listenende (z. B. "nur die ersten 100 Treffer") */
+.listen-hinweis {
+  padding: 12px 0;
+  font-size: 12px;
+  color: var(--text-gedaempft);
+  text-align: center;
+}
+
+/* ================================================================
+   PHASE C — Tab-Leiste: zentraler "+"-Knopf
+   ================================================================ */
+.tab-knopf-plus {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  min-height: var(--tap-min);
+}
+
+.plus-knopf {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--akzent);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 97, 255, 0.35);
+}
+
+.tab-knopf-plus:active .plus-knopf {
+  background: var(--akzent-aktiv);
+}
+
+/* ================================================================
+   PHASE C — Segment-/Umschalter (Lebensmittel / Gerichte)
+   ================================================================ */
+.segment-control {
+  display: flex;
+  gap: 6px;
+  padding: 10px var(--abstand-s) 4px;
+  background: var(--flaeche);
+  flex-shrink: 0;
+}
+
+.segment-knopf {
+  flex: 1;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--flaeche-gedaempft);
+  color: var(--text-sekundaer);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.segment-knopf.aktiv {
+  background: var(--bg-akzent);
+  border-color: var(--border-akzent);
+  color: var(--text-akzent);
+  font-weight: 600;
+}
+
+/* ================================================================
+   PHASE C — Heute-Ansicht (Kalorien-Ring, Trinkbalken, Mahlzeiten)
+   ================================================================ */
+.heute-ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 6px 0 14px;
+}
+
+/* SVG-Texte im Kalorien-Ring (fill statt color) */
+.heute-ring-zahl {
+  font-size: 30px;
+  font-weight: 600;
+  fill: var(--text-primaer);
+  font-variant-numeric: tabular-nums;
+}
+
+.heute-ring-ziel {
+  font-size: 12px;
+  fill: var(--text-sekundaer);
+}
+
+.heute-ring-sub {
+  font-size: 12px;
+  color: var(--text-gedaempft);
+  margin-top: 6px;
+}
+
+.balken-reihe {
+  margin: 10px 0 6px;
+}
+
+.balken-kopf {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.balken-label {
+  color: var(--text-sekundaer);
+}
+
+.balken-wert {
+  color: var(--text-primaer);
+  font-variant-numeric: tabular-nums;
+}
+
+.balken-spur {
+  height: 8px;
+  background: var(--flaeche-gedaempft);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.balken-fueller {
+  height: 100%;
+  background: var(--blau);
+  border-radius: var(--radius-pill);
+  transition: width 0.3s ease;
+}
+
+/* Abschnitts-Ueberschrift (wie Gruppen-Header) */
+.abschnitt-titel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 18px 0 4px;
+}
+
+/* Mahlzeit-Gruppe (Typ + Zwischensumme) */
+.mahlzeit-gruppe-kopf {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  margin: 14px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mahlzeit-eintrag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap-min);
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+  gap: var(--abstand-xs);
+}
+
+.mahlzeit-eintrag:active {
+  background: var(--flaeche-gedaempft);
+}
+
+.mahlzeit-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primaer);
+  overflow: hidden;
+}
+
+.mahlzeit-menge {
+  color: var(--text-gedaempft);
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+.mahlzeit-kcal {
+  font-size: 12px;
+  color: var(--text-sekundaer);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================================================================
+   PHASE C — Formulare (Vitalwerte, Menge-Eingabe, Popup)
+   ================================================================ */
+.formular-feld {
+  margin-bottom: 14px;
+}
+
+.formular-feld label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-sekundaer);
+  margin-bottom: 5px;
+}
+
+.formular-feld input,
+.formular-feld select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--flaeche-gedaempft);
+  color: var(--text-primaer);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.formular-feld input:focus,
+.formular-feld select:focus {
+  border-color: var(--border-akzent);
+}
+
+/* Eigener Dropdown-Pfeil (da appearance:none den nativen entfernt).
+   Neutrales Grau, das in hell und dunkel funktioniert. */
+.formular-feld select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.formular-reihe2 {
+  display: flex;
+  gap: 10px;
+}
+
+.formular-reihe2 .formular-feld {
+  flex: 1;
+}
+
+.formular-hinweis {
+  font-size: 12px;
+  color: var(--erfolg-text);
+  margin-top: 10px;
+  text-align: center;
+  min-height: 16px;
+}
+
+/* Voll-breite Knoepfe */
+.knopf-voll-primaer {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 13px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--akzent);
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.knopf-voll-primaer:active {
+  background: var(--akzent-aktiv);
+}
+
+.knopf-voll-ghost {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-sekundaer);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.knopf-voll-ghost:active {
+  opacity: 0.6;
+}
+
+.knopf-voll-ghost.gefahr {
+  color: var(--gefahr-text);
+  border-color: var(--gefahr-text);
+}
+
+/* ================================================================
+   PHASE C — Menge-Eingabe (Kopf + Live-Ergebnis-Box)
+   ================================================================ */
+.menge-kopf {
+  text-align: center;
+  margin: 4px 0 18px;
+}
+
+.menge-kopf-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primaer);
+}
+
+.menge-kopf-kcal {
+  font-size: 12px;
+  color: var(--text-sekundaer);
+  margin-top: 3px;
+}
+
+.ergebnis-box {
+  background: var(--flaeche-gedaempft);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.ergebnis-label {
+  font-size: 12px;
+  color: var(--text-sekundaer);
+}
+
+.ergebnis-gross {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primaer);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.ergebnis-hinweis {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  margin-top: 3px;
+  min-height: 14px;
+}
+
+/* ================================================================
+   PHASE C — Modales Popup (Einheiten-Abfrage)
+   ================================================================ */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--abstand-m);
+  z-index: 300;
+}
+
+.popup-karte {
+  background: var(--flaeche);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.popup-titel {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primaer);
+  margin-bottom: 6px;
+}
+
+.popup-text {
+  font-size: 13px;
+  color: var(--text-sekundaer);
+  margin-bottom: 16px;
+  line-height: 1.5;
 }

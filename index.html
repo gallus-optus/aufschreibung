@@ -129,12 +129,16 @@
        ============================================================ -->
   <div id="ansicht-lebensmittel" class="ansicht mit-tabbar">
     <div class="standard-header">
-      <h2 class="header-titel">Lebensmittel</h2>
+      <h2 class="header-titel">Datenbank</h2>
       <button class="header-icon-knopf" aria-label="Optionen" disabled>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
           <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
         </svg>
       </button>
+    </div>
+    <div class="segment-control">
+      <button class="segment-knopf umschalter-knopf aktiv" data-route="lebensmittel">Lebensmittel</button>
+      <button class="segment-knopf umschalter-knopf" data-route="gerichte">Gerichte</button>
     </div>
     <div class="suchfeld-container">
       <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -166,12 +170,16 @@
        ============================================================ -->
   <div id="ansicht-gerichte" class="ansicht mit-tabbar">
     <div class="standard-header">
-      <h2 class="header-titel">Gerichte</h2>
+      <h2 class="header-titel">Datenbank</h2>
       <button class="header-icon-knopf" aria-label="Optionen" disabled>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
           <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
         </svg>
       </button>
+    </div>
+    <div class="segment-control">
+      <button class="segment-knopf umschalter-knopf" data-route="lebensmittel">Lebensmittel</button>
+      <button class="segment-knopf umschalter-knopf aktiv" data-route="gerichte">Gerichte</button>
     </div>
     <div class="suchfeld-container">
       <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -229,6 +237,10 @@
         <span class="einstellungen-label">Zuletzt synchronisiert</span>
         <span id="einst-sync-zeit" class="einstellungen-wert">…</span>
       </div>
+      <div class="einstellungen-reihe">
+        <span class="einstellungen-label">Nicht hochgeladen</span>
+        <span id="einst-offen-anzahl" class="einstellungen-wert">…</span>
+      </div>
       <button id="knopf-synchronisieren" class="aktions-reihe">Jetzt synchronisieren</button>
 
       <!-- Abschnitt Lokale Datenbank -->
@@ -247,7 +259,7 @@
       <div class="einstellungen-abschnitt-titel">Über</div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Version</span>
-        <span class="einstellungen-wert">0.1 (Phase B)</span>
+        <span class="einstellungen-wert">0.2 (Phase C)</span>
       </div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Quelltext</span>
@@ -258,33 +270,201 @@
   </div>
 
   <!-- ============================================================
-       UNTERE TAB-LEISTE (erscheint bei den Haupt-Bildschirmen)
+       BILDSCHIRM 8: Heute (Startbildschirm Phase C)
+       ============================================================ -->
+  <div id="ansicht-heute" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <h2 class="header-titel" id="heute-titel">Heute</h2>
+      <button class="header-icon-knopf" aria-label="Kalender" disabled>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="5" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/>
+        </svg>
+      </button>
+    </div>
+    <div id="heute-inhalt" class="ansicht-inhalt"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 9: Vitalwerte
+       ============================================================ -->
+  <div id="ansicht-vitalwerte" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <h2 class="header-titel" id="vital-titel">Vitalwerte</h2>
+      <button class="header-icon-knopf" aria-label="Kalender" disabled>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="5" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/>
+        </svg>
+      </button>
+    </div>
+    <div class="ansicht-inhalt">
+      <form id="vital-form" autocomplete="off">
+        <div class="formular-feld">
+          <label for="vital-gewicht">Gewicht (kg)</label>
+          <input type="text" inputmode="decimal" id="vital-gewicht" placeholder="z. B. 84,2">
+        </div>
+        <div class="formular-reihe2">
+          <div class="formular-feld">
+            <label for="vital-bauch">Bauchumfang (cm)</label>
+            <input type="text" inputmode="numeric" id="vital-bauch">
+          </div>
+          <div class="formular-feld">
+            <label for="vital-arm">Armumfang (cm)</label>
+            <input type="text" inputmode="numeric" id="vital-arm">
+          </div>
+        </div>
+        <div class="formular-reihe2">
+          <div class="formular-feld">
+            <label for="vital-sys">Blutdruck systol.</label>
+            <input type="text" inputmode="numeric" id="vital-sys">
+          </div>
+          <div class="formular-feld">
+            <label for="vital-dia">Blutdruck diastol.</label>
+            <input type="text" inputmode="numeric" id="vital-dia">
+          </div>
+        </div>
+        <div class="formular-reihe2">
+          <div class="formular-feld">
+            <label for="vital-puls">Puls</label>
+            <input type="text" inputmode="numeric" id="vital-puls">
+          </div>
+          <div class="formular-feld">
+            <label for="vital-kfaktor">k-Faktor</label>
+            <input type="text" inputmode="decimal" id="vital-kfaktor">
+          </div>
+        </div>
+        <div class="formular-feld">
+          <label for="vital-bemerkung">Bemerkung</label>
+          <input type="text" id="vital-bemerkung" placeholder="optional">
+        </div>
+        <button type="submit" class="knopf-voll-primaer">Vitalwerte speichern</button>
+        <div class="formular-hinweis" id="vital-hinweis"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 10: Erfassen Schritt 1 — Suche
+       ============================================================ -->
+  <div id="ansicht-erfassen-suche" class="ansicht mit-tabbar">
+    <div class="standard-header">
+      <button id="erfassen-schliessen" class="header-zurueck-knopf" aria-label="Schließen">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
+      <h2 class="header-titel">Erfassen</h2>
+    </div>
+    <div class="segment-control" id="erfassen-segment">
+      <button class="segment-knopf aktiv" data-modus="lebensmittel">Lebensmittel</button>
+      <button class="segment-knopf" data-modus="gerichte">Gerichte</button>
+    </div>
+    <div class="suchfeld-container">
+      <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="search" id="erfassen-suche" class="suchfeld" placeholder="Suchen …" autocomplete="off">
+    </div>
+    <div id="erfassen-treffer" class="eintrags-liste" role="list"></div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 11: Erfassen Schritt 2 — Menge + Einheit
+       ============================================================ -->
+  <div id="ansicht-erfassen-menge" class="ansicht">
+    <div class="standard-header">
+      <button id="menge-zurueck" class="header-zurueck-knopf" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <h2 id="menge-titel" class="header-titel">Menge eingeben</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="menge-kopf">
+        <div class="menge-kopf-name" id="menge-name"></div>
+        <div class="menge-kopf-kcal" id="menge-kcal-info"></div>
+      </div>
+      <div class="formular-reihe2">
+        <div class="formular-feld">
+          <label for="menge-zahl">Menge</label>
+          <input type="text" inputmode="decimal" id="menge-zahl" value="100">
+        </div>
+        <div class="formular-feld">
+          <label for="menge-einheit">Einheit</label>
+          <select id="menge-einheit"></select>
+        </div>
+      </div>
+      <div class="ergebnis-box">
+        <div class="ergebnis-label">Ergibt</div>
+        <div class="ergebnis-gross" id="menge-ergebnis">—</div>
+        <div class="ergebnis-hinweis" id="menge-ergebnis-hinweis"></div>
+      </div>
+      <div class="formular-feld">
+        <label for="menge-typ">Mahlzeit-Typ</label>
+        <select id="menge-typ"></select>
+      </div>
+      <div class="formular-feld">
+        <label for="menge-uhrzeit">Uhrzeit</label>
+        <input type="text" inputmode="numeric" id="menge-uhrzeit">
+      </div>
+      <button type="button" id="menge-hinzufuegen" class="knopf-voll-primaer">Zur Aufschreibung hinzufügen</button>
+      <button type="button" id="menge-loeschen" class="knopf-voll-ghost gefahr versteckt">Eintrag löschen</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       UNTERE TAB-LEISTE (5 Tabs — erscheint bei Haupt-Bildschirmen)
        ============================================================ -->
   <nav id="tab-leiste" class="tab-leiste versteckt" role="navigation" aria-label="Hauptnavigation">
-    <button class="tab-knopf aktiv" data-ziel="lebensmittel" aria-label="Lebensmittel">
+    <button class="tab-knopf" data-tab="heute" data-route="heute" aria-label="Heute">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 8.5c-1.2-1.8-3.7-2.3-5.2-.8c-1.7 1.7-1.3 4.9 .2 7.3c.8 1.3 1.8 2.9 3.2 2.9c.9 0 1.1-.5 1.8-.5s.9.5 1.8.5c1.4 0 2.4-1.6 3.2-2.9c1.5-2.4 1.9-5.6 .2-7.3c-1.5-1.5-4-1-5.2.8z"/>
-        <path d="M12 8.5c0-1.4.6-2.7 2-3.5"/>
+        <path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1V10"/>
       </svg>
-      <span>Lebensmittel</span>
+      <span>Heute</span>
     </button>
-    <button class="tab-knopf" data-ziel="gerichte" aria-label="Gerichte">
+    <button class="tab-knopf" data-tab="vitalwerte" data-route="vitalwerte" aria-label="Vitalwerte">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 3v5a2 2 0 0 0 4 0V3"/>
-        <line x1="9" y1="8" x2="9" y2="21"/>
-        <path d="M17 3c-1.6 1-2.5 3.2-2.5 6c0 1.9 1 3 2.5 3"/>
-        <line x1="17" y1="12" x2="17" y2="21"/>
+        <path d="M3 12h4l2-5 3 10 2-7 1.5 2H21"/>
       </svg>
-      <span>Gerichte</span>
+      <span>Vitalwerte</span>
     </button>
-    <button class="tab-knopf" data-ziel="einstellungen" aria-label="Einstellungen">
+    <button class="tab-knopf-plus" id="tab-erfassen" aria-label="Erfassen">
+      <span class="plus-knopf">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/>
+        </svg>
+      </span>
+    </button>
+    <button class="tab-knopf" data-tab="datenbank" data-route="lebensmittel" aria-label="Datenbank">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
+      </svg>
+      <span>Datenbank</span>
+    </button>
+    <button class="tab-knopf" data-tab="mehr" data-route="einstellungen" aria-label="Mehr">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
       </svg>
-      <span>Einstellungen</span>
+      <span>Mehr</span>
     </button>
   </nav>
+
+  <!-- ============================================================
+       POPUP: Einheiten-Abfrage (ueber allem, modal)
+       ============================================================ -->
+  <div id="popup-einheit" class="popup-overlay versteckt" role="dialog" aria-modal="true" aria-labelledby="popup-einheit-titel">
+    <div class="popup-karte">
+      <div class="popup-titel" id="popup-einheit-titel"></div>
+      <div class="popup-text" id="popup-einheit-text"></div>
+      <div class="formular-feld">
+        <label for="popup-einheit-wert" id="popup-einheit-label"></label>
+        <input type="text" inputmode="decimal" id="popup-einheit-wert">
+      </div>
+      <button type="button" id="popup-einheit-speichern" class="knopf-voll-primaer">Speichern und weiter</button>
+      <button type="button" id="popup-einheit-abbrechen" class="knopf-voll-ghost">Abbrechen</button>
+    </div>
+  </div>
 
   <!-- Globale Fehlermeldungs-Leiste -->
   <div id="fehler-leiste" class="fehler-leiste versteckt" role="alert"></div>

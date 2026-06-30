@@ -44,9 +44,55 @@ const ERWARTETETE_DATEIEN = [
   '05_Konfiguration.json',
 ];
 
-/* IndexedDB-Datenbankname und -Version */
+/* IndexedDB-Datenbankname und -Version.
+   Version 2 (Phase C): Indizes auf 'erfassung' (nach Datum, nach
+   Sync-Status) und 'vitaldaten' (nach Sync-Status) ergaenzt. Die
+   Stammdaten-Stores aus Phase B2 bleiben unveraendert erhalten. */
 const DB_NAME    = 'aufschreibung-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+
+/* Die sechs Einheiten der Mengen-Erfassung. "Gramm" ist die Basis
+   und braucht nie einen hinterlegten Umrechnungswert. Die anderen
+   fuenf werden pro Lebensmittel/Gericht als Gramm-Wert gespeichert. */
+const EINHEITEN = ['Gramm', 'Stück', 'Portion', 'Scheibe', 'Esslöffel', 'Teelöffel'];
+
+/* Zuordnung Einheit → Feldname im Lebensmittel-/Gericht-Datensatz.
+   "Gramm" hat bewusst keinen Eintrag (direkte Menge, kein Faktor). */
+const EINHEIT_ZU_FELD = {
+  'Stück':     'gramm_pro_stueck',
+  'Portion':   'gramm_pro_portion',
+  'Scheibe':   'gramm_pro_scheibe',
+  'Esslöffel': 'gramm_pro_essloeffel',
+  'Teelöffel': 'gramm_pro_teeloeffel',
+};
+
+/* Mehrzahl-Formen der Einheiten fuer die Anzeige ("3 Scheiben"). */
+const EINHEIT_MEHRZAHL = {
+  'Gramm':     'Gramm',
+  'Stück':     'Stück',
+  'Portion':   'Portionen',
+  'Scheibe':   'Scheiben',
+  'Esslöffel': 'Esslöffel',
+  'Teelöffel': 'Teelöffel',
+};
+
+/* Reihenfolge der Mahlzeit-Gruppen in der Heute-Ansicht.
+   "Trinken" wird als eigene Gruppe ganz unten gefuehrt. */
+const MAHLZEIT_REIHENFOLGE = ['Morgens', 'Mittags', 'Abends', 'Zwischen', 'Naschen', 'Trinken'];
+
+/* Standardwerte der Tagesbilanz, falls die Konfiguration sie nicht
+   enthaelt (siehe Bauauftrag "Konfigurations-Erweiterung"). */
+const STANDARD_TAGESZIEL_KCAL  = 2400;
+const STANDARD_KCAL_GRUEN_BIS  = 2200;
+const STANDARD_TRINK_ZIEL_LITER = 2.0;
+
+/* Standard-Zeitgrenzen fuer die Mahlzeit-Typ-Automatik (Fallback). */
+const STANDARD_ZEITREGELN = {
+  morgens_bis:   '10:30',
+  mittags_start: '11:30',
+  mittags_bis:   '15:00',
+  abends_ab:     '18:00',
+};
 
 /* ----------------------------------------------------------------
    2. INDEXEDDB-HILFSFUNKTIONEN
@@ -67,9 +113,17 @@ function datenbankOeffnen() {
   return new Promise((resolve, reject) => {
     const anfrage = indexedDB.open(DB_NAME, DB_VERSION);
 
-    /* Wird aufgerufen wenn die DB neu angelegt oder upgegradet wird */
+    /* Wird aufgerufen wenn die DB neu angelegt oder upgegradet wird.
+       Wichtig fuer die Migration B2 → C: bestehende Stores (mit den
+       echten Stammdaten des Nutzers) werden NICHT neu angelegt oder
+       geloescht — sie bleiben unangetastet. Nur fehlende Stores und
+       fehlende Indizes werden ergaenzt. So gehen die 597 Lebensmittel
+       und 221 Gerichte beim Update nicht verloren. */
     anfrage.onupgradeneeded = (ereignis) => {
       const datenbankInstanz = ereignis.target.result;
+      /* Die laufende "versionchange"-Transaktion. Ueber sie erreichen
+         wir bereits existierende Stores, um ihnen neue Indizes zu geben. */
+      const aktuelleTransaktion = ereignis.target.transaction;
 
       /* Konfiguration und Sync-Status */
       if (!datenbankInstanz.objectStoreNames.contains('meta')) {
@@ -96,12 +150,36 @@ function datenbankOeffnen() {
       if (!datenbankInstanz.objectStoreNames.contains('konfiguration')) {
         datenbankInstanz.createObjectStore('konfiguration', { keyPath: 'schluessel' });
       }
-      /* Erfassungs- und Vitaldaten: Schema schon anlegen, aber in Phase B2 leer */
+
+      /* Erfassungs-Store: Schluessel ist erfassungs_id. Neu in Phase C
+         sind zwei Indizes — einer fuer "alle Eintraege eines Tages"
+         (Heute-Ansicht) und einer fuer "alle noch nicht hochgeladenen
+         Eintraege" (Vorbereitung Phase F). Der Store existiert seit B2
+         schon (war nur leer), darum holen wir ihn ggf. aus der
+         Transaktion statt ihn neu anzulegen. */
+      let erfassungStore;
       if (!datenbankInstanz.objectStoreNames.contains('erfassung')) {
-        datenbankInstanz.createObjectStore('erfassung', { keyPath: 'erfassungs_id' });
+        erfassungStore = datenbankInstanz.createObjectStore('erfassung', { keyPath: 'erfassungs_id' });
+      } else {
+        erfassungStore = aktuelleTransaktion.objectStore('erfassung');
       }
+      if (!erfassungStore.indexNames.contains('nach_datum')) {
+        erfassungStore.createIndex('nach_datum', 'datum', { unique: false });
+      }
+      if (!erfassungStore.indexNames.contains('nach_sync_status')) {
+        erfassungStore.createIndex('nach_sync_status', 'sync_status', { unique: false });
+      }
+
+      /* Vitaldaten-Store: Schluessel ist das Datum (ein Eintrag pro Tag).
+         Neu in Phase C: Index nach Sync-Status (Vorbereitung Phase F). */
+      let vitaldatenStore;
       if (!datenbankInstanz.objectStoreNames.contains('vitaldaten')) {
-        datenbankInstanz.createObjectStore('vitaldaten', { keyPath: 'datum' });
+        vitaldatenStore = datenbankInstanz.createObjectStore('vitaldaten', { keyPath: 'datum' });
+      } else {
+        vitaldatenStore = aktuelleTransaktion.objectStore('vitaldaten');
+      }
+      if (!vitaldatenStore.indexNames.contains('nach_sync_status')) {
+        vitaldatenStore.createIndex('nach_sync_status', 'sync_status', { unique: false });
       }
     };
 
@@ -677,28 +755,57 @@ async function allesDatenImportieren(fortschrittCallback) {
     if (fortschrittCallback) fortschrittCallback(schritt, gesamtSchritte, beschreibung);
   };
 
+  /* Vor dem Neuaufbau: bereits vom Nutzer eingegebene Einheiten-Gramm-
+     Werte (z. B. "1 Scheibe = 22 g") sichern, damit sie einen Re-Import
+     ueberleben. Diese Werte stehen in Phase C noch NICHT in der Dropbox-
+     CSV — das Zurueckschreiben macht erst Phase F. Ohne diese Sicherung
+     wuerde "Datenbank neu aufbauen" sie loeschen. */
+  const lmBestand = await dbAllesLesen('lebensmittel').catch(() => []);
+  const egBestand = await dbAllesLesen('eigengerichte').catch(() => []);
+  const lmEinheitenAlt = new Map();
+  for (const alt of lmBestand) {
+    lmEinheitenAlt.set(alt.lebensmittel_id, einheitenFelderUebernehmen(alt));
+  }
+  const egEinheitenAlt = new Map();
+  for (const alt of egBestand) {
+    egEinheitenAlt.set(alt.gericht_id, einheitenFelderUebernehmen(alt));
+  }
+
   /* Schritt 1: Lebensmittel-Stammdaten */
   fortschritt('Lade Lebensmittel-Stammdaten…');
   const lmCsv = await dropboxDateiHerunterladen('/01_Stammdaten_Lebensmittel.csv');
   const lmRoh = csvParsen(lmCsv);
 
-  const lebensmittelListe = lmRoh.map(z => ({
-    lebensmittel_id:       z.lebensmittel_id,
-    name:                  z.name,
-    bemerkung:             z.bemerkung,
-    gruppe:                z.gruppe,
-    kcal_pro_100g:         z.kcal_pro_100g,
-    eiweiss_g:             z.eiweiss_g,
-    kohlenhydrate_g:       z.kohlenhydrate_g,
-    zucker_g:              z.zucker_g,
-    fett_g:                z.fett_g,
-    fett_gesaettigt_g:     z.fett_gesaettigt_g,
-    fett_ungesaettigt_g:   z.fett_ungesaettigt_g,
-    salz_g:                z.salz_g,
-    ballaststoffe_g:       z.ballaststoffe_g,
-    restmasse_g:           z.restmasse_g,
-    alkohol_g:             z.alkohol_g,
-  }));
+  const lebensmittelListe = lmRoh.map(z => {
+    const eintrag = {
+      lebensmittel_id:       z.lebensmittel_id,
+      name:                  z.name,
+      bemerkung:             z.bemerkung,
+      gruppe:                z.gruppe,
+      kcal_pro_100g:         z.kcal_pro_100g,
+      eiweiss_g:             z.eiweiss_g,
+      kohlenhydrate_g:       z.kohlenhydrate_g,
+      zucker_g:              z.zucker_g,
+      fett_g:                z.fett_g,
+      fett_gesaettigt_g:     z.fett_gesaettigt_g,
+      fett_ungesaettigt_g:   z.fett_ungesaettigt_g,
+      salz_g:                z.salz_g,
+      ballaststoffe_g:       z.ballaststoffe_g,
+      restmasse_g:           z.restmasse_g,
+      alkohol_g:             z.alkohol_g,
+      /* Einheiten-Gramm-Werte: aus CSV uebernehmen falls vorhanden
+         (alte CSV hat die Spalten nicht → leer). */
+      gramm_pro_stueck:      z.gramm_pro_stueck     || '',
+      gramm_pro_portion:     z.gramm_pro_portion    || '',
+      gramm_pro_scheibe:     z.gramm_pro_scheibe    || '',
+      gramm_pro_essloeffel:  z.gramm_pro_essloeffel || '',
+      gramm_pro_teeloeffel:  z.gramm_pro_teeloeffel || '',
+    };
+    /* Lokal vom Nutzer eingegebene Werte haben Vorrang und bleiben
+       erhalten (samt Sync-Markierung "geaendert"). */
+    const bewahrt = lmEinheitenAlt.get(z.lebensmittel_id);
+    return bewahrt ? { ...eintrag, ...bewahrt } : eintrag;
+  });
 
   /* Schnelle Map für Nährwert-Berechnungen */
   const lebensmittelMap = new Map(lebensmittelListe.map(lm => [lm.lebensmittel_id, lm]));
@@ -724,6 +831,12 @@ async function allesDatenImportieren(fortschrittCallback) {
         gericht_endgewicht_g:      zeile.gericht_endgewicht_g,
         kcal_pro_100g_berechnet:   0,   /* Wird unten befüllt */
         kcal_unvollstaendig:       false,
+        /* Einheiten-Gramm-Werte (Gerichte haben oft "Portion") */
+        gramm_pro_stueck:      zeile.gramm_pro_stueck     || '',
+        gramm_pro_portion:     zeile.gramm_pro_portion    || '',
+        gramm_pro_scheibe:     zeile.gramm_pro_scheibe    || '',
+        gramm_pro_essloeffel:  zeile.gramm_pro_essloeffel || '',
+        gramm_pro_teeloeffel:  zeile.gramm_pro_teeloeffel || '',
       });
     }
 
@@ -752,6 +865,9 @@ async function allesDatenImportieren(fortschrittCallback) {
     gericht.salz_pro_100g            = berechnete.salz_pro_100g;
     gericht.kcal_unvollstaendig      = berechnete.anzahl_unbekannt > 0;
     gericht.anzahl_unbekannte_zutaten = berechnete.anzahl_unbekannt;
+    /* Lokal eingegebene Einheiten-Werte bewahren (Vorrang vor CSV). */
+    const bewahrt = egEinheitenAlt.get(gerichtId);
+    if (bewahrt) Object.assign(gericht, bewahrt);
     gerichteNachId.set(gerichtId, gericht);
   }
 
@@ -783,13 +899,180 @@ async function allesDatenImportieren(fortschrittCallback) {
 }
 
 /* ----------------------------------------------------------------
+   5b. ZEIT-, DATUMS-, KONFIGURATIONS- UND EINHEITEN-HILFEN (Phase C)
+
+   Kleine, reine Hilfsfunktionen fuer die Tageseingabe: heutiges
+   Datum/Uhrzeit, Mahlzeit-Typ-Automatik, Einheiten-Umrechnung.
+   ---------------------------------------------------------------- */
+
+/**
+ * Liefert das heutige Datum als ISO-Zeichenkette YYYY-MM-DD in
+ * LOKALER Zeit. Bewusst nicht toISOString() (das waere UTC und je
+ * nach Uhrzeit einen Tag daneben).
+ */
+function heutigesDatum() {
+  const d = new Date();
+  const jahr  = d.getFullYear();
+  const monat = String(d.getMonth() + 1).padStart(2, '0');
+  const tag   = String(d.getDate()).padStart(2, '0');
+  return `${jahr}-${monat}-${tag}`;
+}
+
+/**
+ * Liefert die aktuelle Uhrzeit als "HH:MM" (lokale Zeit).
+ */
+function aktuelleUhrzeit() {
+  const d = new Date();
+  const stunde = String(d.getHours()).padStart(2, '0');
+  const minute = String(d.getMinutes()).padStart(2, '0');
+  return `${stunde}:${minute}`;
+}
+
+/**
+ * Voller Zeitstempel (ISO) fuer das Feld geaendert_am.
+ */
+function jetztZeitstempel() {
+  return new Date().toISOString();
+}
+
+/**
+ * Formatiert ein ISO-Datum als "Di 30.06." (Wochentag + Tag.Monat.).
+ * @param {string} datumIso - YYYY-MM-DD
+ */
+function wochentagDatum(datumIso) {
+  const wochentage = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const teile = datumIso.split('-');
+  /* Datum lokal um die Mittagszeit bilden — so kann keine Zeitzonen-
+     Verschiebung den Wochentag ueber Mitternacht kippen. */
+  const d = new Date(Number(teile[0]), Number(teile[1]) - 1, Number(teile[2]), 12, 0, 0);
+  const wt    = wochentage[d.getDay()];
+  const tag   = String(d.getDate()).padStart(2, '0');
+  const monat = String(d.getMonth() + 1).padStart(2, '0');
+  return `${wt} ${tag}.${monat}.`;
+}
+
+/**
+ * Erzeugt eine garantiert eindeutige Erfassungs-ID:
+ * ERF_<Zeitstempel-ms>_<Zufallssuffix>. Auch ueber Geraete eindeutig.
+ */
+function erfassungsIdErzeugen() {
+  const zeit = Date.now();
+  const zufall = crypto.getRandomValues(new Uint8Array(4));
+  const suffix = Array.from(zufall).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `ERF_${zeit}_${suffix}`;
+}
+
+/**
+ * Sammelt aus einem Lebensmittel-/Gericht-Objekt die Felder, die einen
+ * Re-Import ueberleben sollen: gesetzte Einheiten-Gramm-Werte und (falls
+ * noch ausstehend) die Sync-Markierung. Genutzt beim Daten-Neuaufbau.
+ */
+function einheitenFelderUebernehmen(obj) {
+  const ergebnis = {};
+  for (const feld of Object.values(EINHEIT_ZU_FELD)) {
+    if (obj[feld] !== undefined && obj[feld] !== '' && obj[feld] !== null) {
+      ergebnis[feld] = obj[feld];
+    }
+  }
+  if (obj.sync_status === 'geaendert' || obj.sync_status === 'neu') {
+    ergebnis.sync_status = obj.sync_status;
+    if (obj.geaendert_am) ergebnis.geaendert_am = obj.geaendert_am;
+  }
+  return ergebnis;
+}
+
+/**
+ * Liest einen Konfigurationswert, der als Zahl oder als deutsche
+ * Zeichenkette ("2,0") vorliegen kann. Fehlt er, kommt der Standard.
+ */
+function zahlAusKonfig(wert, standard) {
+  if (wert === undefined || wert === null || wert === '') return standard;
+  if (typeof wert === 'number') return wert;
+  return deutscheZahlParsen(wert);
+}
+
+/* Zwischenspeicher fuer die normalisierte Konfiguration. */
+let konfigCache = null;
+
+/**
+ * Liefert Tagesbilanz-Ziele und Zeitregeln, ergaenzt um Standardwerte
+ * fuer alles, was in der echten 05_Konfiguration.json (noch) fehlt.
+ */
+async function konfigurationHolen() {
+  if (konfigCache) return konfigCache;
+  const eintrag = await dbLesen('konfiguration', 'config');
+  const roh = (eintrag && eintrag.daten) ? eintrag.daten : {};
+  const zeit = roh.mahlzeit_zeitregeln || {};
+  konfigCache = {
+    tagesziel_kcal:   Math.round(zahlAusKonfig(roh.tagesziel_kcal, STANDARD_TAGESZIEL_KCAL)),
+    kcal_gruen_bis:   Math.round(zahlAusKonfig(roh.kcal_gruen_bis, STANDARD_KCAL_GRUEN_BIS)),
+    trink_ziel_liter: zahlAusKonfig(roh.trink_ziel_liter, STANDARD_TRINK_ZIEL_LITER),
+    morgens_bis:      zeit.morgens_bis   || STANDARD_ZEITREGELN.morgens_bis,
+    mittags_start:    zeit.mittags_start || STANDARD_ZEITREGELN.mittags_start,
+    mittags_bis:      zeit.mittags_bis   || STANDARD_ZEITREGELN.mittags_bis,
+    abends_ab:        zeit.abends_ab     || STANDARD_ZEITREGELN.abends_ab,
+  };
+  return konfigCache;
+}
+
+/**
+ * Schlaegt den Mahlzeit-Typ anhand der Uhrzeit vor (aus den
+ * Konfigurations-Zeitregeln). Der Vergleich als "HH:MM"-Zeichenkette
+ * funktioniert, weil Stunden und Minuten zweistellig sind.
+ */
+function mahlzeitTypAusUhrzeit(uhrzeit, konfig) {
+  if (uhrzeit < konfig.morgens_bis)   return 'Morgens';
+  if (uhrzeit < konfig.mittags_start) return 'Zwischen';
+  if (uhrzeit < konfig.mittags_bis)   return 'Mittags';
+  if (uhrzeit < konfig.abends_ab)     return 'Zwischen';
+  return 'Abends';
+}
+
+/**
+ * Anzeige-Text fuer Menge + Einheit, z. B. (3, "Scheibe") →
+ * "3 Scheiben", (1, "Portion") → "1 Portion".
+ */
+function einheitAnzeige(menge, einheit) {
+  const mehrzahl = (Number(menge) === 1) ? einheit : (EINHEIT_MEHRZAHL[einheit] || einheit);
+  return `${mengeFormatieren(Number(menge))} ${mehrzahl}`;
+}
+
+/**
+ * Liefert die kcal pro 100 g eines Lebensmittels oder Gerichts.
+ * Bei Gerichten der gecachte berechnete Wert.
+ */
+function kcalProHundert(objekt, istEigengericht) {
+  if (!objekt) return 0;
+  if (istEigengericht) {
+    return Number(objekt.kcal_pro_100g_berechnet) || 0;
+  }
+  return deutscheZahlParsen(objekt.kcal_pro_100g);
+}
+
+/**
+ * Rechnet eine Eingabe (Menge + Einheit) in Gramm um.
+ * @returns {Object} { gramm, hatWert, feldname, proEinheit } —
+ *   hatWert=false, wenn fuer die Einheit (ausser Gramm) noch kein
+ *   Gewicht hinterlegt ist (dann muss das Popup gezeigt werden).
+ */
+function grammBerechnen(menge, einheit, objekt) {
+  const m = Number(menge) || 0;
+  if (einheit === 'Gramm') {
+    return { gramm: m, hatWert: true, feldname: null, proEinheit: 1 };
+  }
+  const feldname = EINHEIT_ZU_FELD[einheit];
+  const hinterlegt = objekt ? deutscheZahlParsen(objekt[feldname]) : 0;
+  if (hinterlegt > 0) {
+    return { gramm: m * hinterlegt, hatWert: true, feldname, proEinheit: hinterlegt };
+  }
+  return { gramm: 0, hatWert: false, feldname, proEinheit: 0 };
+}
+
+/* ----------------------------------------------------------------
    6. MINI-ROUTER
 
    Hash-basiertes Routing: die URL hinter dem # bestimmt, welcher
-   Bildschirm angezeigt wird. Beispiel: #/lebensmittel/LM_0001
-
-   Historien-Stack: wir merken uns die letzte Ansicht, damit der
-   Zurück-Knopf funktioniert (ohne Browser-History-API-Komplexität).
+   Bildschirm angezeigt wird. Beispiel: #/lebensmittel-detail/LM_0001
    ---------------------------------------------------------------- */
 
 /* Globale Zustandsvariablen für die Listenansichten */
@@ -797,6 +1080,36 @@ let lebensmittelSuchfilter     = '';
 let lebensmittelGruppenfilter  = 'alle';
 let gerichteSuchfilter         = '';
 let gerichteKategoriefilter    = 'alle';
+
+/* Zustand des Erfassen-Ablaufs (Suche → Menge → speichern). */
+let erfassenModus       = 'lebensmittel';  /* 'lebensmittel' | 'gerichte' */
+let erfassenSuchfilter  = '';
+let erfassenAuswahl     = null;  /* gewaehltes Lebensmittel/Gericht (Objekt) */
+let erfassenBearbeitenId = null; /* erfassungs_id im Bearbeiten-Modus, sonst null */
+
+/* Zuordnung Bildschirm → Tab, der unten markiert sein soll. Detail-
+   und Unter-Bildschirme verweisen auf ihren uebergeordneten Tab. */
+const ANSICHT_ZU_TAB = {
+  'ansicht-heute':              'heute',
+  'ansicht-vitalwerte':         'vitalwerte',
+  'ansicht-erfassen-suche':     'erfassen',
+  'ansicht-erfassen-menge':     'erfassen',
+  'ansicht-lebensmittel':       'datenbank',
+  'ansicht-gerichte':           'datenbank',
+  'ansicht-lebensmittel-detail':'datenbank',
+  'ansicht-gericht-detail':     'datenbank',
+  'ansicht-einstellungen':      'mehr',
+};
+
+/* Bildschirme, bei denen die untere Tab-Leiste sichtbar ist. */
+const ANSICHTEN_MIT_TABBAR = new Set([
+  'ansicht-heute',
+  'ansicht-vitalwerte',
+  'ansicht-erfassen-suche',
+  'ansicht-lebensmittel',
+  'ansicht-gerichte',
+  'ansicht-einstellungen',
+]);
 
 /**
  * Zeigt eine Ansicht an und blendet alle anderen aus.
@@ -816,17 +1129,18 @@ function ansichtAnzeigen(ansichtId) {
 
   /* Tab-Leiste nur bei den Haupt-Bildschirmen anzeigen */
   const tabLeiste = document.getElementById('tab-leiste');
-  const mitTabbar = ['ansicht-lebensmittel', 'ansicht-gerichte', 'ansicht-einstellungen'];
-  if (mitTabbar.includes(ansichtId)) {
+  if (ANSICHTEN_MIT_TABBAR.has(ansichtId)) {
     tabLeiste.classList.remove('versteckt');
   } else {
     tabLeiste.classList.add('versteckt');
   }
 
-  /* Aktiven Tab markieren */
+  /* Aktiven Tab markieren: jeder Bildschirm gehoert zu genau einem Tab
+     (Detail-/Unterseiten markieren ihren Eltern-Tab). Der zentrale
+     "+"-Knopf (Erfassen) wird nie als aktiv markiert. */
+  const aktiverTab = ANSICHT_ZU_TAB[ansichtId] || '';
   document.querySelectorAll('.tab-knopf').forEach(knopf => {
-    const ziel = knopf.dataset.ziel;
-    knopf.classList.toggle('aktiv', ansichtId === 'ansicht-' + ziel);
+    knopf.classList.toggle('aktiv', knopf.dataset.tab === aktiverTab);
   });
 }
 
@@ -879,6 +1193,33 @@ async function routeVerarbeiten() {
 
   /* Normales Routing */
   switch (seite) {
+    case 'heute':
+      ansichtAnzeigen('ansicht-heute');
+      await heuteAnsichtLaden();
+      break;
+    case 'vitalwerte':
+      ansichtAnzeigen('ansicht-vitalwerte');
+      await vitalwerteLaden();
+      break;
+    case 'erfassen':
+      ansichtAnzeigen('ansicht-erfassen-suche');
+      await erfassenSucheLaden();
+      break;
+    case 'erfassen-menge':
+      /* Braucht eine vorher getroffene Auswahl (Modul-Zustand). Fehlt
+         sie — z. B. nach einem Neuladen direkt auf dieser URL — geht
+         es zurueck zur Suche. */
+      if (erfassenAuswahl) {
+        ansichtAnzeigen('ansicht-erfassen-menge');
+        await erfassenMengeLaden();
+      } else {
+        await navigieren('erfassen');
+      }
+      break;
+    case 'lebensmittel':
+      ansichtAnzeigen('ansicht-lebensmittel');
+      await lebensmittelListeLaden();
+      break;
     case 'gerichte':
       ansichtAnzeigen('ansicht-gerichte');
       await gerichteListeLaden();
@@ -900,9 +1241,9 @@ async function routeVerarbeiten() {
       }
       break;
     default:
-      /* Standardmäßig Lebensmittel-Liste */
-      ansichtAnzeigen('ansicht-lebensmittel');
-      await lebensmittelListeLaden();
+      /* Standard-Startbildschirm ist "Heute" */
+      ansichtAnzeigen('ansicht-heute');
+      await heuteAnsichtLaden();
   }
 }
 
@@ -974,9 +1315,9 @@ async function dateienHerunterladen() {
       fueller.style.width = Math.round((schritt / gesamt) * 100) + '%';
     });
 
-    /* Fertig → zur Lebensmittel-Liste */
+    /* Fertig → zur Heute-Ansicht (neuer Startbildschirm) */
     ladebalken.classList.add('versteckt');
-    await navigieren('lebensmittel');
+    await navigieren('heute');
   } catch (fehler) {
     ladebalken.classList.add('versteckt');
     fehlermeldungAnzeigen('Fehler beim Herunterladen: ' + fehler.message);
@@ -1409,6 +1750,24 @@ async function einstellungenLaden() {
     document.getElementById('einst-sync-zeit').textContent = 'Noch nie';
   }
 
+  /* Offene (noch nicht hochgeladene) Aenderungen zaehlen — Vorbereitung
+     fuer Phase F. Zaehlt Erfassungen, Vitaldaten und geaenderte
+     Stammdaten mit sync_status "neu"/"geaendert". */
+  try {
+    const offenEl = document.getElementById('einst-offen-anzahl');
+    const istOffen = d => d.sync_status === 'neu' || d.sync_status === 'geaendert';
+    const erf = await dbAllesLesen('erfassung');
+    const vit = await dbAllesLesen('vitaldaten');
+    const lm  = await dbAllesLesen('lebensmittel');
+    const eg  = await dbAllesLesen('eigengerichte');
+    const offen = erf.filter(istOffen).length + vit.filter(istOffen).length +
+                  lm.filter(istOffen).length + eg.filter(istOffen).length;
+    offenEl.textContent = offen === 0 ? 'Alles aktuell' : `${offen} Änderung${offen === 1 ? '' : 'en'}`;
+    offenEl.classList.toggle('erfolg', offen === 0);
+  } catch (e) {
+    document.getElementById('einst-offen-anzahl').textContent = '—';
+  }
+
   /* Anzahlen aus IndexedDB */
   const lmAnzahl = await dbZaehlen('lebensmittel');
   const egAnzahl = await dbZaehlen('eigengerichte');
@@ -1440,6 +1799,570 @@ async function einstellungenLaden() {
   } catch (e) {
     document.getElementById('einst-speicher').textContent = '(Offline)';
   }
+}
+
+/* ----------------------------------------------------------------
+   7b. PHASE-C-BILDSCHIRME: Heute, Erfassen, Vitalwerte
+
+   Die Tageseingabe. Schreibt ausschliesslich in die lokale IndexedDB
+   (kein Dropbox-Upload — das ist Phase F). Alle neuen/geaenderten
+   Datensaetze bekommen geaendert_am + sync_status (Vorbereitung F).
+   ---------------------------------------------------------------- */
+
+/* Vorbelegung der Mengen-Maske (im Bearbeiten-Modus gefuellt). */
+let erfassenVorbelegung = null;
+/* Welche Einheit gerade im Popup abgefragt wird. */
+let popupEinheitAktuell = null;
+
+/**
+ * Liefert eine Map lebensmittel_id → Lebensmittel (nutzt den Cache).
+ */
+async function lebensmittelMapHolen() {
+  if (!lebensmittelCache) lebensmittelCache = await dbAllesLesen('lebensmittel');
+  return new Map(lebensmittelCache.map(lm => [lm.lebensmittel_id, lm]));
+}
+
+/**
+ * Liefert eine Map gericht_id → Eigengericht (nutzt den Cache).
+ */
+async function gerichteMapHolen() {
+  if (!gerichteCache) gerichteCache = await dbAllesLesen('eigengerichte');
+  return new Map(gerichteCache.map(g => [g.gericht_id, g]));
+}
+
+/**
+ * Bestimmt den naechsten Sync-Status nach einer Aenderung:
+ * noch nie hochgeladene Datensaetze bleiben "neu", bereits
+ * synchronisierte werden "geaendert".
+ */
+function naechsterSyncStatus(alterStatus) {
+  if (!alterStatus || alterStatus === 'neu') return 'neu';
+  return 'geaendert';
+}
+
+/* -- Bildschirm: Heute (Startbildschirm) ------------------------ */
+
+/**
+ * Baut den SVG-Donut fuer die Tageskalorien. Der Ring faerbt sich nach
+ * den Konfigurations-Grenzen (gruen/gelb/rot) und fuellt sich
+ * proportional zum Tagesziel.
+ */
+function kalorienKreisSvg(summe, konfig) {
+  const radius = 62;
+  const umfang = 2 * Math.PI * radius;            /* ≈ 389,56 */
+  const ziel   = konfig.tagesziel_kcal;
+  const anteil = ziel > 0 ? Math.min(summe / ziel, 1) : 0;
+  const fuellung = umfang * anteil;
+  const rest     = umfang - fuellung;
+
+  let farbe;
+  if (summe <= konfig.kcal_gruen_bis)      farbe = 'var(--gruen)';
+  else if (summe <= konfig.tagesziel_kcal) farbe = 'var(--gelb)';
+  else                                     farbe = 'var(--rot)';
+
+  return `
+    <svg width="150" height="150" viewBox="0 0 150 150" role="img" class="heute-ring">
+      <title>Tageskalorien ${summe} von ${ziel}</title>
+      <circle cx="75" cy="75" r="${radius}" fill="none" stroke="var(--flaeche-gedaempft)" stroke-width="14"/>
+      <circle cx="75" cy="75" r="${radius}" fill="none" stroke="${farbe}" stroke-width="14"
+        stroke-linecap="round" stroke-dasharray="${fuellung.toFixed(1)} ${rest.toFixed(1)}"
+        transform="rotate(-90 75 75)"/>
+      <text x="75" y="70" text-anchor="middle" class="heute-ring-zahl">${summe}</text>
+      <text x="75" y="92" text-anchor="middle" class="heute-ring-ziel">von ${ziel} kcal</text>
+    </svg>`;
+}
+
+/**
+ * Liefert den Hinweistext unter dem Kalorien-Kreis.
+ */
+function kalorienHinweis(summe, konfig) {
+  if (summe <= konfig.kcal_gruen_bis) {
+    return `noch ${konfig.kcal_gruen_bis - summe} kcal im grünen Bereich`;
+  }
+  if (summe <= konfig.tagesziel_kcal) {
+    return `noch ${konfig.tagesziel_kcal - summe} kcal bis zum Tagesziel`;
+  }
+  return `Tagesziel um ${summe - konfig.tagesziel_kcal} kcal überschritten`;
+}
+
+/**
+ * Laedt und rendert die Heute-Ansicht: Kalorien-Kreis, Trinkmengen-
+ * Balken und die nach Mahlzeit-Typ gruppierten Eintraege des Tages.
+ */
+async function heuteAnsichtLaden() {
+  const datum = heutigesDatum();
+  document.getElementById('heute-titel').textContent = 'Heute · ' + wochentagDatum(datum);
+
+  const konfig = await konfigurationHolen();
+  const eintraege = await dbIndexLesen('erfassung', 'nach_datum', datum);
+  const lmMap = await lebensmittelMapHolen();
+  const egMap = await gerichteMapHolen();
+
+  /* Summen berechnen; kcal je Eintrag fuer die Anzeige zwischenspeichern */
+  let summeKcal = 0;
+  let trinkenGramm = 0;
+  for (const e of eintraege) {
+    const objekt = e.ist_eigengericht ? egMap.get(e.eigengericht_id) : lmMap.get(e.lebensmittel_id);
+    const kcal = Math.round((e.menge_g / 100) * kcalProHundert(objekt, e.ist_eigengericht));
+    e._kcal = kcal;
+    summeKcal += kcal;
+    if (e.mahlzeit_typ === 'Trinken') trinkenGramm += e.menge_g;
+  }
+
+  const liter = trinkenGramm / 1000;
+  const trinkAnteil = konfig.trink_ziel_liter > 0 ? Math.min(liter / konfig.trink_ziel_liter, 1) : 0;
+
+  /* Tropfen-Symbol fuer den Trinkmengen-Balken */
+  const tropfenSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 3c3 4 6 7 6 10.5a6 6 0 0 1 -12 0C6 10 9 7 12 3z"/></svg>';
+
+  const teile = [];
+  teile.push(`<div class="heute-ring-wrap">${kalorienKreisSvg(summeKcal, konfig)}<div class="heute-ring-sub">${escapeHtml(kalorienHinweis(summeKcal, konfig))}</div></div>`);
+  teile.push(`
+    <div class="balken-reihe">
+      <div class="balken-kopf">
+        <span class="balken-label">${tropfenSvg} Trinkmenge</span>
+        <span class="balken-wert">${zahlDe(liter, 1)} / ${zahlDe(konfig.trink_ziel_liter, 1)} L</span>
+      </div>
+      <div class="balken-spur"><div class="balken-fueller" style="width:${(trinkAnteil * 100).toFixed(0)}%"></div></div>
+    </div>`);
+
+  teile.push('<div class="abschnitt-titel">Mahlzeiten heute</div>');
+
+  if (eintraege.length === 0) {
+    teile.push('<div class="leerer-zustand">Noch nichts erfasst. Tippe unten auf „+", um eine Mahlzeit hinzuzufügen.</div>');
+  } else {
+    for (const typ of MAHLZEIT_REIHENFOLGE) {
+      const gruppe = eintraege.filter(e => e.mahlzeit_typ === typ);
+      if (gruppe.length === 0) continue;
+      const gruppenSumme = gruppe.reduce((s, e) => s + e._kcal, 0);
+      teile.push(`<div class="mahlzeit-gruppe-kopf"><span>${escapeHtml(typ)}</span><span>${gruppenSumme} kcal</span></div>`);
+      gruppe.sort((a, b) => (a.zeit || '').localeCompare(b.zeit || ''));
+      for (const e of gruppe) {
+        const mengeText = (e.einheit_eingabe && e.einheit_eingabe !== 'Gramm')
+          ? `${einheitAnzeige(e.menge_eingabe, e.einheit_eingabe)} · ${mengeFormatieren(e.menge_g)} g`
+          : `${mengeFormatieren(e.menge_g)} g`;
+        teile.push(`
+          <div class="mahlzeit-eintrag" data-id="${escapeHtml(e.erfassungs_id)}" tabindex="0">
+            <span class="mahlzeit-name">${escapeHtml(e.lebensmittel_name)}<span class="mahlzeit-menge">${escapeHtml(mengeText)}</span></span>
+            <span class="mahlzeit-kcal">${e._kcal} kcal</span>
+          </div>`);
+      }
+    }
+  }
+
+  const inhalt = document.getElementById('heute-inhalt');
+  inhalt.innerHTML = teile.join('');
+  inhalt.querySelectorAll('.mahlzeit-eintrag').forEach(el => {
+    el.addEventListener('click', () => eintragBearbeitenOeffnen(el.dataset.id));
+  });
+}
+
+/* -- Bildschirm: Erfassen Schritt 1 (Suche) --------------------- */
+
+/**
+ * Setzt den Erfassen-Ablauf auf Anfang (wird vom "+"-Knopf gerufen).
+ */
+function erfassenNeuStarten() {
+  erfassenModus       = 'lebensmittel';
+  erfassenSuchfilter  = '';
+  erfassenAuswahl     = null;
+  erfassenBearbeitenId = null;
+  erfassenVorbelegung = null;
+  navigieren('erfassen');
+}
+
+/**
+ * Laedt die Such-Ansicht (Segment + Suchfeld auf aktuellen Stand,
+ * Caches sicherstellen, Treffer rendern).
+ */
+async function erfassenSucheLaden() {
+  document.getElementById('erfassen-suche').value = erfassenSuchfilter;
+  document.querySelectorAll('#erfassen-segment .segment-knopf').forEach(k => {
+    k.classList.toggle('aktiv', k.dataset.modus === erfassenModus);
+  });
+  if (!lebensmittelCache) lebensmittelCache = await dbAllesLesen('lebensmittel');
+  if (!gerichteCache)     gerichteCache     = await dbAllesLesen('eigengerichte');
+  erfassenTrefferRendern();
+}
+
+/**
+ * Rendert die Trefferliste der Live-Suche (Lebensmittel oder Gerichte).
+ * Begrenzt auf die ersten 100 Treffer, um die Liste fluessig zu halten.
+ */
+function erfassenTrefferRendern() {
+  const suche = erfassenSuchfilter.toLowerCase();
+  const listeEl = document.getElementById('erfassen-treffer');
+  const MAX = 100;
+  const html = [];
+
+  if (erfassenModus === 'lebensmittel') {
+    const treffer = (lebensmittelCache || []).filter(lm =>
+      lm.name.toLowerCase().includes(suche) ||
+      (lm.bemerkung && lm.bemerkung.toLowerCase().includes(suche)));
+    treffer.sort((a, b) => a.name.localeCompare(b.name));
+    if (treffer.length === 0) {
+      listeEl.innerHTML = '<div class="leerer-zustand">Keine Lebensmittel gefunden.</div>';
+      return;
+    }
+    for (const lm of treffer.slice(0, MAX)) {
+      const kcal = Math.round(deutscheZahlParsen(lm.kcal_pro_100g));
+      html.push(`<div class="listen-eintrag" data-typ="lm" data-id="${escapeHtml(lm.lebensmittel_id)}" tabindex="0"><span class="listen-eintrag-name">${escapeHtml(lm.name)}</span><span class="listen-eintrag-wert">${kcal} kcal</span></div>`);
+    }
+    if (treffer.length > MAX) {
+      html.push(`<div class="listen-hinweis">… nur die ersten ${MAX} von ${treffer.length} Treffern. Bitte Suche eingrenzen.</div>`);
+    }
+  } else {
+    const treffer = (gerichteCache || []).filter(g => g.gericht_name.toLowerCase().includes(suche));
+    treffer.sort((a, b) => a.gericht_name.localeCompare(b.gericht_name));
+    if (treffer.length === 0) {
+      listeEl.innerHTML = '<div class="leerer-zustand">Keine Gerichte gefunden.</div>';
+      return;
+    }
+    for (const g of treffer.slice(0, MAX)) {
+      const kcalText = g.kcal_unvollstaendig ? `${g.kcal_pro_100g_berechnet} kcal*` : `${g.kcal_pro_100g_berechnet} kcal`;
+      html.push(`<div class="listen-eintrag" data-typ="eg" data-id="${escapeHtml(g.gericht_id)}" tabindex="0"><span class="listen-eintrag-name">${escapeHtml(g.gericht_name)}</span><span class="listen-eintrag-wert">${kcalText}</span></div>`);
+    }
+    if (treffer.length > MAX) {
+      html.push(`<div class="listen-hinweis">… nur die ersten ${MAX} von ${treffer.length} Treffern. Bitte Suche eingrenzen.</div>`);
+    }
+  }
+
+  listeEl.innerHTML = html.join('');
+  listeEl.querySelectorAll('.listen-eintrag').forEach(el => {
+    el.addEventListener('click', () => erfassenTrefferGewaehlt(el.dataset.typ === 'eg', el.dataset.id));
+  });
+}
+
+/**
+ * Wird beim Antippen eines Suchtreffers gerufen: Auswahl merken und
+ * zur Mengen-Eingabe wechseln (Neu-Modus).
+ */
+async function erfassenTrefferGewaehlt(istEigengericht, id) {
+  const objekt = istEigengericht ? await dbLesen('eigengerichte', id) : await dbLesen('lebensmittel', id);
+  if (!objekt) return;
+  erfassenAuswahl = {
+    ist_eigengericht: istEigengericht,
+    id,
+    name: istEigengericht ? objekt.gericht_name : objekt.name,
+    objekt,
+  };
+  erfassenBearbeitenId = null;
+  erfassenVorbelegung  = null;
+  await navigieren('erfassen-menge');
+}
+
+/* -- Bildschirm: Erfassen Schritt 2 (Menge + Einheit) ----------- */
+
+/**
+ * Laedt die Mengen-Maske: Kopf, Dropdowns, Vorbelegung, Live-Ergebnis.
+ */
+async function erfassenMengeLaden() {
+  const auswahl = erfassenAuswahl;
+  const konfig  = await konfigurationHolen();
+  const kcal100 = kcalProHundert(auswahl.objekt, auswahl.ist_eigengericht);
+
+  document.getElementById('menge-titel').textContent =
+    erfassenBearbeitenId ? 'Eintrag bearbeiten' : 'Menge eingeben';
+  document.getElementById('menge-name').textContent = auswahl.name;
+  document.getElementById('menge-kcal-info').textContent = `${kcal100} kcal pro 100 g`;
+
+  /* Einheit-Dropdown */
+  document.getElementById('menge-einheit').innerHTML =
+    EINHEITEN.map(e => `<option value="${e}">${e}</option>`).join('');
+  /* Mahlzeit-Typ-Dropdown */
+  document.getElementById('menge-typ').innerHTML =
+    MAHLZEIT_REIHENFOLGE.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  /* Vorbelegung: im Bearbeiten-Modus aus dem Eintrag, sonst Defaults */
+  let vorMenge, vorEinheit, vorTyp, vorZeit;
+  if (erfassenVorbelegung) {
+    vorMenge   = erfassenVorbelegung.menge;
+    vorEinheit = erfassenVorbelegung.einheit;
+    vorTyp     = erfassenVorbelegung.typ;
+    vorZeit    = erfassenVorbelegung.uhrzeit;
+  } else {
+    vorMenge   = '100';
+    vorEinheit = 'Gramm';
+    vorZeit    = aktuelleUhrzeit();
+    vorTyp     = mahlzeitTypAusUhrzeit(vorZeit, konfig);
+  }
+  document.getElementById('menge-zahl').value     = vorMenge;
+  document.getElementById('menge-einheit').value  = vorEinheit;
+  document.getElementById('menge-typ').value      = vorTyp;
+  document.getElementById('menge-uhrzeit').value  = vorZeit;
+
+  document.getElementById('menge-loeschen').classList.toggle('versteckt', !erfassenBearbeitenId);
+  document.getElementById('menge-hinzufuegen').textContent =
+    erfassenBearbeitenId ? 'Änderung speichern' : 'Zur Aufschreibung hinzufügen';
+
+  erfassenLiveBerechnen();
+}
+
+/**
+ * Aktualisiert die Live-Ergebnis-Box (Gramm + kcal + Einheiten-Hinweis).
+ */
+function erfassenLiveBerechnen() {
+  const auswahl = erfassenAuswahl;
+  if (!auswahl) return;
+  const menge   = deutscheZahlParsen(document.getElementById('menge-zahl').value);
+  const einheit = document.getElementById('menge-einheit').value;
+  const kcal100 = kcalProHundert(auswahl.objekt, auswahl.ist_eigengericht);
+  const berechnung = grammBerechnen(menge, einheit, auswahl.objekt);
+
+  const ergebnisEl = document.getElementById('menge-ergebnis');
+  const hinweisEl  = document.getElementById('menge-ergebnis-hinweis');
+
+  if (!berechnung.hatWert) {
+    ergebnisEl.textContent = '— g · — kcal';
+    hinweisEl.textContent  = `Für „${einheit}" ist noch kein Gewicht hinterlegt.`;
+    return;
+  }
+  const gramm = berechnung.gramm;
+  const kcal  = Math.round((gramm / 100) * kcal100);
+  ergebnisEl.textContent = `${mengeFormatieren(gramm)} g · ${kcal} kcal`;
+  hinweisEl.textContent  = (einheit === 'Gramm')
+    ? ''
+    : `1 ${einheit} = ${mengeFormatieren(berechnung.proEinheit)} g (gespeichert)`;
+}
+
+/**
+ * Reagiert auf einen Wechsel des Einheit-Dropdowns. Fehlt fuer die
+ * gewaehlte Einheit ein Gramm-Wert, wird das Abfrage-Popup geoeffnet.
+ */
+function erfassenEinheitGewechselt() {
+  const einheit = document.getElementById('menge-einheit').value;
+  const menge   = deutscheZahlParsen(document.getElementById('menge-zahl').value) || 1;
+  const berechnung = grammBerechnen(menge, einheit, erfassenAuswahl.objekt);
+  if (!berechnung.hatWert) {
+    einheitPopupOeffnen(einheit);
+  } else {
+    erfassenLiveBerechnen();
+  }
+}
+
+/* -- Bildschirm: Einheiten-Abfrage (Popup) ---------------------- */
+
+/**
+ * Oeffnet das Popup zur Abfrage des Gramm-Gewichts einer Einheit.
+ */
+function einheitPopupOeffnen(einheit) {
+  popupEinheitAktuell = einheit;
+  const name = erfassenAuswahl.name;
+  document.getElementById('popup-einheit-titel').textContent = `Wie viel wiegt eine ${einheit}?`;
+  document.getElementById('popup-einheit-text').textContent =
+    `Für „${name}" ist noch kein Gewicht für eine ${einheit} hinterlegt. Gib es einmalig an — es wird gespeichert und künftig automatisch genutzt.`;
+  document.getElementById('popup-einheit-label').textContent = `Gewicht einer ${einheit} in Gramm`;
+  const wertEl = document.getElementById('popup-einheit-wert');
+  wertEl.value = '';
+  document.getElementById('popup-einheit').classList.remove('versteckt');
+  wertEl.focus();
+}
+
+/**
+ * Schliesst das Einheiten-Popup.
+ */
+function einheitPopupSchliessen() {
+  document.getElementById('popup-einheit').classList.add('versteckt');
+  popupEinheitAktuell = null;
+}
+
+/**
+ * Speichert den im Popup eingegebenen Gramm-Wert beim Lebensmittel/
+ * Gericht (sync_status = "geaendert") und setzt die Berechnung fort.
+ */
+async function einheitPopupSpeichern() {
+  const einheit = popupEinheitAktuell;
+  const wert = deutscheZahlParsen(document.getElementById('popup-einheit-wert').value);
+  if (wert <= 0) {
+    fehlermeldungAnzeigen('Bitte ein Gewicht größer als 0 eingeben.');
+    return;
+  }
+  const feldname = EINHEIT_ZU_FELD[einheit];
+  const auswahl  = erfassenAuswahl;
+  const store    = auswahl.ist_eigengericht ? 'eigengerichte' : 'lebensmittel';
+
+  const frisch = await dbLesen(store, auswahl.id);
+  if (frisch) {
+    frisch[feldname]    = mengeFormatieren(wert);  /* deutsche Notation, CSV-konform */
+    frisch.sync_status  = 'geaendert';
+    frisch.geaendert_am = jetztZeitstempel();
+    await dbSchreiben(store, frisch);
+    auswahl.objekt = frisch;
+    /* Caches verwerfen, damit Listen den neuen Wert sehen */
+    lebensmittelCache = null;
+    gerichteCache = null;
+  }
+  einheitPopupSchliessen();
+  erfassenLiveBerechnen();
+}
+
+/**
+ * Bricht das Popup ab und setzt die Einheit zurueck auf Gramm.
+ */
+function einheitPopupAbbrechen() {
+  document.getElementById('menge-einheit').value = 'Gramm';
+  einheitPopupSchliessen();
+  erfassenLiveBerechnen();
+}
+
+/* -- Speichern / Bearbeiten / Loeschen eines Eintrags ----------- */
+
+/**
+ * Speichert den aktuellen Erfassen-Stand als Eintrag in IndexedDB
+ * (neu oder als Aktualisierung) und kehrt zur Heute-Ansicht zurueck.
+ */
+async function erfassenSpeichern() {
+  const auswahl = erfassenAuswahl;
+  if (!auswahl) return;
+
+  const mengeEingabe = deutscheZahlParsen(document.getElementById('menge-zahl').value);
+  const einheit      = document.getElementById('menge-einheit').value;
+  const typ          = document.getElementById('menge-typ').value;
+  let   zeit         = document.getElementById('menge-uhrzeit').value.trim();
+
+  if (mengeEingabe <= 0) {
+    fehlermeldungAnzeigen('Bitte eine Menge größer als 0 eingeben.');
+    return;
+  }
+  const berechnung = grammBerechnen(mengeEingabe, einheit, auswahl.objekt);
+  if (!berechnung.hatWert) {
+    einheitPopupOeffnen(einheit);
+    return;
+  }
+  /* Uhrzeit grob pruefen (HH:MM); sonst aktuelle Zeit nehmen */
+  if (!/^\d{1,2}:\d{2}$/.test(zeit)) zeit = aktuelleUhrzeit();
+
+  const istEg = auswahl.ist_eigengericht;
+
+  /* Bestehenden Eintrag holen (Bearbeiten) oder neuen anlegen */
+  let eintrag;
+  let altStatus;
+  if (erfassenBearbeitenId) {
+    eintrag = await dbLesen('erfassung', erfassenBearbeitenId) || { erfassungs_id: erfassenBearbeitenId };
+    altStatus = eintrag.sync_status;
+  } else {
+    eintrag = { erfassungs_id: erfassungsIdErzeugen(), datum: heutigesDatum() };
+    altStatus = undefined;
+  }
+
+  eintrag.zeit             = zeit;
+  eintrag.mahlzeit_typ     = typ;
+  eintrag.menge_g          = Math.round(berechnung.gramm * 10) / 10;
+  eintrag.lebensmittel_id  = istEg ? '' : auswahl.id;
+  eintrag.lebensmittel_name = auswahl.name;
+  eintrag.ist_eigengericht = istEg;
+  eintrag.eigengericht_id  = istEg ? auswahl.id : '';
+  eintrag.gericht_kontext  = (einheit === 'Gramm') ? '' : einheitAnzeige(mengeEingabe, einheit);
+  eintrag.bemerkung        = eintrag.bemerkung || '';
+  eintrag.menge_eingabe    = mengeFormatieren(mengeEingabe);
+  eintrag.einheit_eingabe  = einheit;
+  eintrag.geaendert_am     = jetztZeitstempel();
+  eintrag.sync_status      = naechsterSyncStatus(altStatus);
+
+  await dbSchreiben('erfassung', eintrag);
+
+  erfassenBearbeitenId = null;
+  erfassenAuswahl      = null;
+  erfassenVorbelegung  = null;
+  await navigieren('heute');
+}
+
+/**
+ * Oeffnet einen bestehenden Eintrag zum Bearbeiten (gleiche Maske wie
+ * Erfassen-Schritt-2, vorbefuellt mit der Original-Eingabe).
+ */
+async function eintragBearbeitenOeffnen(erfassungsId) {
+  const eintrag = await dbLesen('erfassung', erfassungsId);
+  if (!eintrag) return;
+  const istEg = !!eintrag.ist_eigengericht;
+  const objekt = istEg
+    ? await dbLesen('eigengerichte', eintrag.eigengericht_id)
+    : await dbLesen('lebensmittel', eintrag.lebensmittel_id);
+
+  erfassenAuswahl = {
+    ist_eigengericht: istEg,
+    id:   istEg ? eintrag.eigengericht_id : eintrag.lebensmittel_id,
+    name: eintrag.lebensmittel_name,
+    objekt,
+  };
+  erfassenBearbeitenId = erfassungsId;
+  erfassenVorbelegung = {
+    menge:   (eintrag.menge_eingabe !== undefined && eintrag.menge_eingabe !== '')
+               ? eintrag.menge_eingabe : mengeFormatieren(eintrag.menge_g),
+    einheit: eintrag.einheit_eingabe || 'Gramm',
+    typ:     eintrag.mahlzeit_typ,
+    uhrzeit: eintrag.zeit,
+  };
+  await navigieren('erfassen-menge');
+}
+
+/**
+ * Loescht den gerade bearbeiteten Eintrag (mit Rueckfrage).
+ */
+async function erfassenEintragLoeschen() {
+  if (!erfassenBearbeitenId) return;
+  if (!confirm('Diesen Eintrag wirklich löschen?')) return;
+  await dbLoeschen('erfassung', erfassenBearbeitenId);
+  erfassenBearbeitenId = null;
+  erfassenAuswahl      = null;
+  erfassenVorbelegung  = null;
+  await navigieren('heute');
+}
+
+/* -- Bildschirm: Vitalwerte ------------------------------------- */
+
+/**
+ * Laedt das Vitalwerte-Formular und befuellt es mit dem heutigen
+ * Eintrag, falls schon einer existiert.
+ */
+async function vitalwerteLaden() {
+  const datum = heutigesDatum();
+  document.getElementById('vital-titel').textContent = 'Vitalwerte · ' + wochentagDatum(datum);
+
+  const vorhanden = await dbLesen('vitaldaten', datum);
+  const setze = (id, wert) => {
+    document.getElementById(id).value = (wert === undefined || wert === null) ? '' : wert;
+  };
+  setze('vital-gewicht',   vorhanden && vorhanden.gewicht_kg);
+  setze('vital-bauch',     vorhanden && vorhanden.bauchumfang_cm);
+  setze('vital-arm',       vorhanden && vorhanden.armumfang_cm);
+  setze('vital-sys',       vorhanden && vorhanden.blutdruck_systolisch);
+  setze('vital-dia',       vorhanden && vorhanden.blutdruck_diastolisch);
+  setze('vital-puls',      vorhanden && vorhanden.puls);
+  setze('vital-kfaktor',   vorhanden && vorhanden.k_faktor);
+  setze('vital-bemerkung', vorhanden && vorhanden.bemerkung);
+
+  document.getElementById('vital-hinweis').textContent =
+    vorhanden ? 'Heutiger Eintrag geladen — Speichern überschreibt ihn.' : '';
+}
+
+/**
+ * Speichert das Vitalwerte-Formular fuer das heutige Datum
+ * (ein Eintrag pro Tag, ueberschreibend).
+ */
+async function vitalwerteSpeichern(ereignis) {
+  if (ereignis) ereignis.preventDefault();
+  const datum = heutigesDatum();
+  const lese = id => document.getElementById(id).value.trim();
+  /* Dezimalfelder auf deutsches Komma normalisieren (CSV-konform). */
+  const dez = id => { const v = lese(id); return v === '' ? '' : v.replace('.', ','); };
+
+  const alt = await dbLesen('vitaldaten', datum);
+  const vitaldaten = {
+    datum,
+    gewicht_kg:           dez('vital-gewicht'),
+    bauchumfang_cm:       lese('vital-bauch'),
+    armumfang_cm:         lese('vital-arm'),
+    blutdruck_systolisch: lese('vital-sys'),
+    blutdruck_diastolisch: lese('vital-dia'),
+    puls:                 lese('vital-puls'),
+    k_faktor:             dez('vital-kfaktor'),
+    bemerkung:            lese('vital-bemerkung'),
+    geaendert_am:         jetztZeitstempel(),
+    sync_status:          naechsterSyncStatus(alt && alt.sync_status),
+  };
+  await dbSchreiben('vitaldaten', vitaldaten);
+  document.getElementById('vital-hinweis').textContent = 'Gespeichert.';
 }
 
 /* ----------------------------------------------------------------
@@ -1493,13 +2416,55 @@ function ereignisListenerRegistrieren() {
     history.back();
   });
 
-  /* Tab-Leiste */
+  /* Untere Tab-Leiste: die vier normalen Tabs navigieren ueber ihr
+     data-route-Ziel. */
   document.querySelectorAll('.tab-knopf').forEach(knopf => {
+    knopf.addEventListener('click', () => navigieren(knopf.dataset.route));
+  });
+
+  /* Zentraler "+"-Knopf (Erfassen) — startet den Ablauf frisch. */
+  document.getElementById('tab-erfassen').addEventListener('click', erfassenNeuStarten);
+
+  /* Datenbank-Umschalter (Lebensmittel / Gerichte) auf beiden Listen. */
+  document.querySelectorAll('.umschalter-knopf[data-route]').forEach(knopf => {
+    knopf.addEventListener('click', () => navigieren(knopf.dataset.route));
+  });
+
+  /* --- Erfassen Schritt 1: Suche --- */
+  document.getElementById('erfassen-schliessen').addEventListener('click', () => navigieren('heute'));
+  document.getElementById('erfassen-suche').addEventListener('input', (e) => {
+    erfassenSuchfilter = e.target.value;
+    erfassenTrefferRendern();
+  });
+  document.querySelectorAll('#erfassen-segment .segment-knopf').forEach(knopf => {
     knopf.addEventListener('click', () => {
-      const ziel = knopf.dataset.ziel;
-      /* Caches invalidieren wenn der Nutzer manuell wechselt */
-      navigieren(ziel);
+      erfassenModus = knopf.dataset.modus;
+      document.querySelectorAll('#erfassen-segment .segment-knopf').forEach(k =>
+        k.classList.toggle('aktiv', k === knopf));
+      erfassenTrefferRendern();
     });
+  });
+
+  /* --- Erfassen Schritt 2: Menge + Einheit --- */
+  document.getElementById('menge-zurueck').addEventListener('click', () => history.back());
+  document.getElementById('menge-zahl').addEventListener('input', erfassenLiveBerechnen);
+  document.getElementById('menge-einheit').addEventListener('change', erfassenEinheitGewechselt);
+  document.getElementById('menge-hinzufuegen').addEventListener('click', () => {
+    erfassenSpeichern().catch(fehler => fehlermeldungAnzeigen('Speichern fehlgeschlagen: ' + fehler.message));
+  });
+  document.getElementById('menge-loeschen').addEventListener('click', () => {
+    erfassenEintragLoeschen().catch(fehler => fehlermeldungAnzeigen('Löschen fehlgeschlagen: ' + fehler.message));
+  });
+
+  /* --- Einheiten-Popup --- */
+  document.getElementById('popup-einheit-speichern').addEventListener('click', () => {
+    einheitPopupSpeichern().catch(fehler => fehlermeldungAnzeigen('Speichern fehlgeschlagen: ' + fehler.message));
+  });
+  document.getElementById('popup-einheit-abbrechen').addEventListener('click', einheitPopupAbbrechen);
+
+  /* --- Vitalwerte-Formular --- */
+  document.getElementById('vital-form').addEventListener('submit', (e) => {
+    vitalwerteSpeichern(e).catch(fehler => fehlermeldungAnzeigen('Speichern fehlgeschlagen: ' + fehler.message));
   });
 
   /* Suche Lebensmittel */
@@ -1519,6 +2484,7 @@ function ereignisListenerRegistrieren() {
     await dbLoeschen('auth', 'tokens');
     lebensmittelCache = null;
     gerichteCache = null;
+    konfigCache = null;
     navigieren('');
   });
 
@@ -1534,6 +2500,7 @@ function ereignisListenerRegistrieren() {
     try {
       lebensmittelCache = null;
       gerichteCache = null;
+      konfigCache = null;
       await allesDatenImportieren(null);
       await einstellungenLaden();
     } catch (fehler) {
@@ -1559,6 +2526,7 @@ function ereignisListenerRegistrieren() {
     try {
       lebensmittelCache = null;
       gerichteCache = null;
+      konfigCache = null;
       await allesDatenImportieren(null);
       await einstellungenLaden();
     } catch (fehler) {
@@ -1628,7 +2596,7 @@ async function appStarten() {
     }
 
     /* URL-Parameter entfernen (ohne Seiten-Reload) */
-    const saubereUrl = window.location.pathname + '#/lebensmittel';
+    const saubereUrl = window.location.pathname + '#/heute';
     window.history.replaceState({}, '', saubereUrl);
   }
 
