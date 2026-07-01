@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase D — Mockup Werkzeuge (fünf Rechner)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg-page:#FAFAFA; --surface-1:#F5F5F4; --surface-2:#FFF;
+  --text-primary:#1A1A1A; --text-secondary:#6B6B6B; --text-muted:#999;
+  --text-accent:#0061FF; --text-danger:#A32D2D; --bg-accent:#E6F1FB;
+  --border:#E5E5E5; --border-strong:#D4D4D4; --border-accent:#85B7EB;
+  --radius:8px; --dropbox-blue:#0061FF;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:#1A1A1A; --surface-1:#2A2A2A; --surface-2:#2E2E2E;
+    --text-primary:#F0F0F0; --text-secondary:#BBB; --text-muted:#888;
+    --text-accent:#5DA9F0; --bg-accent:#1E3A5C; --border:#3A3A3A;
+    --border-strong:#4A4A4A;
+  }
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:var(--bg-page); color:var(--text-primary); font-family:var(--font-sans); font-size:15px; line-height:1.6; }
+.page { max-width:800px; margin:0 auto; padding:32px 20px 80px; }
+h1 { font-size:24px; font-weight:500; margin:0 0 8px; }
+h2 { font-size:18px; font-weight:500; margin:36px 0 12px; }
+.intro { background:var(--surface-1); border-radius:var(--radius); padding:16px 20px; margin-bottom:24px; font-size:14px; color:var(--text-secondary); line-height:1.7; }
+.intro p { margin:0 0 8px; } .intro p:last-child { margin:0; } .intro strong { color:var(--text-primary); font-weight:500; }
+
+.md-nav { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 24px; justify-content:center; padding:12px; background:var(--surface-1); border-radius:var(--radius); position:sticky; top:0; z-index:10; }
+.md-nav button { font-size:12px; padding:6px 10px; background:var(--surface-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; color:var(--text-secondary); font-family:inherit; }
+.md-nav button.act { background:var(--bg-accent); color:var(--text-accent); border-color:var(--border-accent); font-weight:500; }
+.md-wrap { display:flex; justify-content:center; margin:0 0 16px; }
+.md-phone { width:340px; background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:22px; overflow:hidden; }
+.md-status { background:var(--surface-1); padding:6px 16px; display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); font-weight:500; }
+.md-status i { font-size:14px; vertical-align:-2px; }
+.md-head { padding:14px 16px 12px; border-bottom:0.5px solid var(--border); display:flex; align-items:center; gap:10px; }
+.md-head-title { font-size:17px; font-weight:500; flex:1; }
+.md-back { background:transparent; border:none; cursor:pointer; color:var(--text-secondary); font-size:20px; padding:0; }
+.md-content { padding:16px; min-height:490px; max-height:490px; overflow-y:auto; }
+.md-explain { margin:8px auto 24px; max-width:560px; padding:14px 18px; background:var(--surface-1); border-radius:var(--radius); font-size:13px; color:var(--text-secondary); line-height:1.7; }
+.md-explain b { color:var(--text-primary); font-weight:500; }
+
+.md-toolrow { display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:0.5px solid var(--border); cursor:pointer; }
+.md-toolrow i.lead { font-size:22px; color:var(--text-accent); width:28px; text-align:center; }
+.md-toolrow .tt { flex:1; } .md-toolrow .tt b { display:block; font-size:14px; font-weight:500; }
+.md-toolrow .tt span { font-size:12px; color:var(--text-secondary); }
+.md-toolrow i.chev { color:var(--text-muted); font-size:18px; }
+.md-subhead { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin:14px 0 4px; font-weight:500; }
+
+.md-field { margin-bottom:12px; }
+.md-field label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+.md-field input, .md-field select { width:100%; box-sizing:border-box; height:36px; padding:0 10px; font-size:14px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-family:inherit; }
+.md-row2 { display:flex; gap:10px; } .md-row2 .md-field { flex:1; }
+.md-zutat { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:0.5px solid var(--border); font-size:13px; }
+.md-zutat .zn { flex:1; } .md-zutat .zm { color:var(--text-secondary); }
+.md-zutat .zx { color:var(--text-danger); cursor:pointer; font-size:15px; }
+.md-addzut { display:flex; align-items:center; gap:6px; color:var(--text-accent); font-size:13px; padding:9px 0; cursor:pointer; }
+.md-result { background:var(--bg-accent); border-radius:var(--radius); padding:12px 14px; margin:12px 0; }
+.md-result .rt { font-size:11px; color:var(--text-accent); text-transform:uppercase; letter-spacing:0.5px; font-weight:500; }
+.md-result .rbig { font-size:26px; font-weight:500; color:var(--text-primary); margin:2px 0; }
+.md-result .rsub { font-size:12px; color:var(--text-secondary); }
+.md-nrow { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
+.md-nrow .l { color:var(--text-secondary); }
+.md-btn { width:100%; padding:11px; background:var(--dropbox-blue); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; margin-top:6px; }
+.md-btn-ghost { width:100%; padding:10px; background:transparent; color:var(--text-secondary); border:0.5px solid var(--border); border-radius:var(--radius); font-size:13px; cursor:pointer; font-family:inherit; margin-top:8px; }
+.md-hint { font-size:11px; color:var(--text-muted); line-height:1.5; margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Phase D — Mockup Werkzeuge (fünf Rechner)</h1>
+
+<div class="intro">
+<p><strong>Was ist das?</strong> Klickbares Mockup des neuen Werkzeuge-Bereichs im Mehr-Tab: fünf Rechner zum Anlegen von Eigengerichten und Lebensmitteln und zur Mengen-Umrechnung.</p>
+<p><strong>Nicht echt:</strong> Berechnungen und Navigation statisch. Beispielzahlen aus realen Fällen. Visuelle Referenz für den Coder.</p>
+</div>
+
+<h2>Bildschirme durchklicken</h2>
+
+<div class="md-nav">
+<button data-s="0" class="act">1. Werkzeuge</button>
+<button data-s="1">2. Rezeptrechner</button>
+<button data-s="2">3. Alkohol</button>
+<button data-s="3">4. Brühepulver</button>
+<button data-s="4">5. Garfaktor→DB</button>
+<button data-s="5">6. Garfaktor→Tag</button>
+</div>
+
+<div class="md-screen" data-sid="0">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:30</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Werkzeuge</div></div>
+<div class="md-content">
+<div class="md-toolrow"><i class="ti ti-chef-hat lead"></i><div class="tt"><b>Rezeptrechner</b><span>Eigengericht aus Zutaten, mit Endgewicht</span></div><i class="ti ti-chevron-right chev"></i></div>
+<div class="md-toolrow"><i class="ti ti-glass-cocktail lead"></i><div class="tt"><b>Alkoholrechner</b><span>kcal und Alkohol pro 100 g</span></div><i class="ti ti-chevron-right chev"></i></div>
+<div class="md-toolrow"><i class="ti ti-soup lead"></i><div class="tt"><b>Brühepulver-Rechner</b><span>Nährwerte pro 100 g Trockenpulver</span></div><i class="ti ti-chevron-right chev"></i></div>
+<div class="md-toolrow"><i class="ti ti-flame lead"></i><div class="tt"><b>Garfaktor: Quelle → Datenbank</b><span>Gegarte Angabe auf roh umrechnen</span></div><i class="ti ti-chevron-right chev"></i></div>
+<div class="md-toolrow"><i class="ti ti-flame lead"></i><div class="tt"><b>Garfaktor: für die Aufschreibung</b><span>Gegartes Gewicht auf Portion umrechnen</span></div><i class="ti ti-chevron-right chev"></i></div>
+<div style="text-align:center;color:var(--text-muted);font-size:12px;margin-top:20px">Weitere Werkzeuge folgen später</div>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 1 — Werkzeuge-Übersicht.</b> Erreichbar über den Mehr-Tab. Fünf Rechner, erweiterbar. Rechner 1–4 können in die Datenbank schreiben, Rechner 5 ist ein reiner Anzeige-Rechner für die Aufschreibung.</div>
+</div>
+
+<div class="md-screen" data-sid="1" style="display:none">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:31</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Rezeptrechner</div></div>
+<div class="md-content">
+<div class="md-subhead">Zutaten</div>
+<div class="md-zutat"><span class="zn">Kartoffel</span><span class="zm">840 g</span><i class="ti ti-x zx"></i></div>
+<div class="md-zutat"><span class="zn">Milch 3,5 %</span><span class="zm">150 g</span><i class="ti ti-x zx"></i></div>
+<div class="md-zutat"><span class="zn">Aufstrich Butter</span><span class="zm">30 g</span><i class="ti ti-x zx"></i></div>
+<div class="md-zutat"><span class="zn">Gemüse Sellerie</span><span class="zm">120 g</span><i class="ti ti-x zx"></i></div>
+<div class="md-addzut"><i class="ti ti-plus"></i> Zutat hinzufügen</div>
+<div class="md-field" style="margin-top:12px"><label>Rohmasse (Summe Zutaten)</label><input type="text" value="1140 g" disabled></div>
+<div class="md-field"><label>Endgewicht nach dem Kochen (gewogen)</label><input type="text" value="990"></div>
+<div class="md-result">
+<div class="rt">Ergebnis pro 100 g</div>
+<div class="rbig">142 kcal</div>
+<div class="rsub">bezogen auf 990 g Endgewicht</div>
+<div style="margin-top:8px">
+<div class="md-nrow"><span class="l">Eiweiß</span><span>4,2 g</span></div>
+<div class="md-nrow"><span class="l">Kohlenhydrate</span><span>18,7 g</span></div>
+<div class="md-nrow"><span class="l">Fett</span><span>5,8 g</span></div>
+<div class="md-nrow"><span class="l">Salz</span><span>0,42 g</span></div>
+</div>
+</div>
+<div class="md-field"><label>Als Eigengericht speichern unter</label><input type="text" value="Kartoffel Sellerie Quetsche"></div>
+<button class="md-btn">In Datenbank speichern</button>
+<button class="md-btn-ghost">Bestehendes Rezept laden</button>
+<div class="md-hint">Wasser hat Masse, aber keine Nährwerte. Verkocht Wasser (Endgewicht &lt; Rohmasse), steigen die Werte pro 100 g. Bei Wasserzugabe sinken sie. Fehlt eine Zutat in der Datenbank, erst dort anlegen.</div>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 2 — Rezeptrechner.</b> Eigengericht-Editor mit Endgewicht-Korrektur. Zutaten aus der Datenbank wählen, Endgewicht angeben (Default = Rohmasse), Nährwerte pro 100 g werden aufs Endgewicht bezogen. Als neues Eigengericht speichern. "Bestehendes Rezept laden" holt ein Gericht zum Ändern und Neu-Speichern. Fehlt eine Zutat, muss sie erst in der Datenbank angelegt werden.</div>
+</div>
+
+<div class="md-screen" data-sid="2" style="display:none">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:32</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Alkoholrechner</div></div>
+<div class="md-content">
+<div class="md-row2">
+<div class="md-field"><label>Menge</label><input type="text" value="40"></div>
+<div class="md-field"><label>Einheit</label><select><option selected>ml</option><option>Liter</option></select></div>
+</div>
+<div class="md-field"><label>Alkoholgehalt (Vol %)</label><input type="text" value="40"></div>
+<div class="md-field"><label>Zusätzliche kcal pro 100 g (Zucker o.ä.)</label><input type="text" value="0"></div>
+<div class="md-result">
+<div class="rt">Ergebnis pro 100 g</div>
+<div class="rbig">227 kcal</div>
+<div class="rsub">32 g reiner Alkohol pro 100 g</div>
+<div style="margin-top:8px">
+<div class="md-nrow"><span class="l">Reiner Alkohol (40 ml)</span><span>12,8 g</span></div>
+<div class="md-nrow"><span class="l">kcal aus Alkohol</span><span>91 kcal</span></div>
+<div class="md-nrow"><span class="l">Dichte-Faktor</span><span>0,8 g/ml</span></div>
+</div>
+</div>
+<div class="md-field"><label>In Datenbank speichern als</label><input type="text" value="Whiskey Single Malt"></div>
+<button class="md-btn">In Datenbank speichern</button>
+<div class="md-hint">Speichert kcal_pro_100g und alkohol_g in die Datenbank — für die spätere Alkohol-Auswertung. Erfasst wird normal über die Aufschreibung.</div>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 3 — Alkoholrechner.</b> ml × Vol% × 0,8 = Gramm Alkohol, × 7,1 = kcal. Optional Zusatz-kcal für Zucker. Übernahme in die Datenbank mit Name "Whiskey " + Sorte; füllt auch alkohol_g für die Auswertung.</div>
+</div>
+
+<div class="md-screen" data-sid="3" style="display:none">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:33</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Brühepulver-Rechner</div></div>
+<div class="md-content">
+<div class="md-field"><label>Zubereitbare Gesamtmenge Brühe</label><input type="text" value="16000 ml"></div>
+<div class="md-field"><label>Trockenmasse Pulver in der Packung</label><input type="text" value="380 g"></div>
+<div class="md-subhead">Nährwertangabe laut Packung</div>
+<div class="md-row2">
+<div class="md-field"><label>kcal</label><input type="text" value="5"></div>
+<div class="md-field"><label>je ... ml zubereitet</label><input type="text" value="80"></div>
+</div>
+<div class="md-result">
+<div class="rt">Ergebnis pro 100 g Trockenpulver</div>
+<div class="rbig">263 kcal</div>
+<div class="rsub">aus 1000 kcal in 380 g Pulver</div>
+<div style="margin-top:8px">
+<div class="md-nrow"><span class="l">Gesamt-kcal der Packung</span><span>1000 kcal</span></div>
+<div class="md-nrow"><span class="l">Portionen à 80 ml</span><span>200</span></div>
+</div>
+</div>
+<div class="md-field"><label>In Datenbank speichern als</label><input type="text" value="Gekörnte Brühe Gemüse"></div>
+<button class="md-btn">In Datenbank speichern</button>
+<div class="md-hint">Packungs-Nährwerte beziehen sich auf zubereitete Brühe. Der Rechner rechnet zurück auf 100 g Trockenpulver — so wird das Pulver als normales Lebensmittel abwiegbar.</div>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 4 — Brühepulver-Rechner.</b> 16000 ml ÷ 80 ml × 5 kcal = 1000 kcal Gesamt, ÷ 380 g × 100 = 263 kcal/100g Trockenpulver. Übernahme in die Datenbank optional.</div>
+</div>
+
+<div class="md-screen" data-sid="4" style="display:none">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:34</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Garfaktor → Datenbank</div></div>
+<div class="md-content">
+<div class="md-hint" style="margin-bottom:12px">Für Lebensmittel, deren Quelle nur <b style="color:var(--text-primary)">gegarte</b> Nährwerte angibt. Rechnet auf roh um, passend zu Deinen rohen Datenbank-Angaben.</div>
+<div class="md-subhead">Gegarte Nährwerte (laut Quelle, pro 100 g)</div>
+<div class="md-row2">
+<div class="md-field"><label>kcal</label><input type="text" value="250"></div>
+<div class="md-field"><label>Eiweiß g</label><input type="text" value="30"></div>
+</div>
+<div class="md-row2">
+<div class="md-field"><label>Fett g</label><input type="text" value="14"></div>
+<div class="md-field"><label>Salz g</label><input type="text" value="0,2"></div>
+</div>
+<div class="md-field"><label>Garfaktor (gegart = roh × Faktor)</label><input type="text" value="0,77"></div>
+<div class="md-result">
+<div class="rt">Umgerechnet auf roh (pro 100 g)</div>
+<div class="rbig">193 kcal</div>
+<div class="rsub">250 × 0,77 = 193 (Nährwerte verdünnen sich)</div>
+<div style="margin-top:8px">
+<div class="md-nrow"><span class="l">Eiweiß</span><span>23,1 g</span></div>
+<div class="md-nrow"><span class="l">Fett</span><span>10,8 g</span></div>
+<div class="md-nrow"><span class="l">Salz</span><span>0,15 g</span></div>
+</div>
+</div>
+<div class="md-field"><label>In Datenbank speichern als</label><input type="text" value="Rindersteak roh"></div>
+<button class="md-btn">In Datenbank speichern</button>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 5 — Garfaktor: Quelle → Datenbank.</b> Datenbank-Hilfsrechner. Quelle liefert gegarte Werte, Deine DB führt rohe. Multiplikation mit dem Garfaktor (0,77): 100 g gegart entsprechen mehr rohem Material, die Werte verdünnen sich auf den rohen Zustand. Ergebnis als rohes Lebensmittel speichern.</div>
+</div>
+
+<div class="md-screen" data-sid="5" style="display:none">
+<div class="md-wrap"><div class="md-phone">
+<div class="md-status"><span>18:35</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="md-head"><button class="md-back"><i class="ti ti-arrow-left"></i></button><div class="md-head-title">Garfaktor → Aufschreibung</div></div>
+<div class="md-content">
+<div class="md-hint" style="margin-bottom:12px">Für Lebensmittel, die in Deiner Datenbank <b style="color:var(--text-primary)">roh</b> stehen, die Du aber <b style="color:var(--text-primary)">gegart</b> gegessen hast.</div>
+<div class="md-field"><label>Lebensmittel (roh) aus Datenbank</label><input type="text" value="Rindersteak roh · 193 kcal/100g"></div>
+<div class="md-field"><label>Gegartes Gewicht, das Du gegessen hast</label><input type="text" value="150 g"></div>
+<div class="md-field"><label>Garfaktor (gegart = roh × Faktor)</label><input type="text" value="0,77"></div>
+<div class="md-result">
+<div class="rt">Für Deine Portion</div>
+<div class="rbig">376 kcal</div>
+<div class="rsub">150 g gegart = 195 g roh</div>
+<div style="margin-top:8px">
+<div class="md-nrow"><span class="l">Rohe Menge (150 ÷ 0,77)</span><span>195 g</span></div>
+<div class="md-nrow"><span class="l">Eiweiß</span><span>45,0 g</span></div>
+<div class="md-nrow"><span class="l">Fett</span><span>21,1 g</span></div>
+</div>
+</div>
+<button class="md-btn">Werte anzeigen zum Übernehmen</button>
+<div class="md-hint">Reiner Rechner — zeigt die Nährwerte für Deine Portion. Die Erfassung machst Du normal über die Aufschreibung mit der errechneten rohen Menge.</div>
+</div>
+</div></div>
+<div class="md-explain"><b>Bildschirm 6 — Garfaktor: für die Aufschreibung.</b> Reiner Rechner ohne DB-Anbindung. Steak steht roh in der DB, Du hast 150 g gegart gegessen. 150 ÷ 0,77 = 195 g roh. Zeigt die Nährwerte der Portion zum Abtippen in die Aufschreibung.</div>
+</div>
+
+</div>
+<script>
+(function(){
+  var screens=document.querySelectorAll('.md-screen');
+  var buttons=document.querySelectorAll('.md-nav button');
+  function show(id){
+    screens.forEach(function(s){ s.style.display=(s.dataset.sid===id)?'':'none'; });
+    buttons.forEach(function(b){ b.classList.toggle('act', b.dataset.s===id); });
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  buttons.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.s); }); });
+})();
+</script>
+</body>
+</html>
