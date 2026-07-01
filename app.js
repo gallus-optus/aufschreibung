@@ -99,6 +99,9 @@ const STANDARD_ZEITREGELN = {
 const STANDARD_ALKOHOL_KCAL_PRO_G = 7.1;   /* kcal je Gramm reiner Alkohol */
 const STANDARD_ALKOHOL_DICHTE     = 0.8;   /* g/ml — Dichte von Ethanol */
 const STANDARD_GARFAKTOR          = 0.77;  /* gegart = roh × Garfaktor */
+const STANDARD_EIWEISS_KCAL_PRO_G = 4.1;   /* kcal je Gramm Eiweiss */
+const STANDARD_KH_KCAL_PRO_G      = 4.1;   /* kcal je Gramm Kohlenhydrate */
+const STANDARD_FETT_KCAL_PRO_G    = 9.3;   /* kcal je Gramm Fett */
 
 /* Fallback-Listen fuer die Auswahl-Dropdowns beim Anlegen. */
 const STANDARD_GERICHT_KATEGORIEN = ['Hauptgericht', 'Suppe', 'Beilage', 'Soße & Dip', 'Dessert & Backwerk', 'Sonstiges'];
@@ -1238,6 +1241,9 @@ async function konfigurationHolen() {
     alkohol_kcal_pro_g: zahlAusKonfig(kalorienK.alkohol, STANDARD_ALKOHOL_KCAL_PRO_G),
     alkohol_dichte:     zahlAusKonfig(alkoholK.dichte_g_pro_ml, STANDARD_ALKOHOL_DICHTE),
     garfaktor_default:  zahlAusKonfig(bruehepK.garfaktor_default, STANDARD_GARFAKTOR),
+    eiweiss_kcal_pro_g: zahlAusKonfig(kalorienK.eiweiss, STANDARD_EIWEISS_KCAL_PRO_G),
+    kh_kcal_pro_g:      zahlAusKonfig(kalorienK.kohlenhydrate, STANDARD_KH_KCAL_PRO_G),
+    fett_kcal_pro_g:    zahlAusKonfig(kalorienK.fett, STANDARD_FETT_KCAL_PRO_G),
     gericht_kategorien:   Array.isArray(roh.gericht_kategorien) && roh.gericht_kategorien.length
       ? roh.gericht_kategorien : STANDARD_GERICHT_KATEGORIEN,
     lebensmittel_gruppen: Array.isArray(roh.lebensmittel_gruppen) && roh.lebensmittel_gruppen.length
@@ -3332,6 +3338,63 @@ function zahlNachDeutsch(wert, stellen) {
   return (stellen === 0) ? String(Math.round(n)) : n.toFixed(stellen).replace('.', ',');
 }
 
+/* Naehrwert-Eingabefelder (ohne kcal) fuer die Rechner, die den vollen
+   Satz erfassen. alkohol_g wird bei manchen Rechnern automatisch
+   berechnet und dort aus der Liste gefiltert. */
+const NAEHRWERT_EINGABE_FELDER = [
+  { feld: 'eiweiss_g',           label: 'Eiweiß (g)' },
+  { feld: 'kohlenhydrate_g',     label: 'Kohlenhydrate (g)' },
+  { feld: 'zucker_g',            label: 'davon Zucker (g)' },
+  { feld: 'fett_g',              label: 'Fett (g)' },
+  { feld: 'fett_gesaettigt_g',   label: 'davon gesättigt (g)' },
+  { feld: 'fett_ungesaettigt_g', label: 'davon ungesättigt (g)' },
+  { feld: 'salz_g',              label: 'Salz (g)' },
+  { feld: 'ballaststoffe_g',     label: 'Ballaststoffe (g)' },
+  { feld: 'restmasse_g',         label: 'Restmasse (g)' },
+  { feld: 'alkohol_g',           label: 'Alkohol (g)' },
+];
+
+/**
+ * Baut die HTML-Eingabefelder fuer einen Naehrwert-Satz (paarweise in
+ * Zweier-Reihen). Feld-IDs: <prefix>-<feldname>, Startwert 0.
+ */
+function naehrwertFelderHtml(prefix, felder) {
+  let html = '';
+  for (let i = 0; i < felder.length; i += 2) {
+    html += '<div class="formular-reihe2">';
+    for (let j = i; j < Math.min(i + 2, felder.length); j++) {
+      const f = felder[j];
+      html += `<div class="formular-feld"><label for="${prefix}-${f.feld}">${escapeHtml(f.label)}</label><input type="text" inputmode="decimal" id="${prefix}-${f.feld}" value="0"></div>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+/**
+ * Liest die eingegebenen Naehrwerte aus den Feldern eines Rechners in
+ * ein Objekt {feld: zahl}, optional mit einem Skalierungsfaktor.
+ */
+function naehrwertFelderLesen(prefix, felder, faktor) {
+  const werte = {};
+  const f = (faktor === undefined) ? 1 : faktor;
+  for (const feld of felder) {
+    const el = document.getElementById(`${prefix}-${feld.feld}`);
+    werte[feld.feld] = el ? deutscheZahlParsen(el.value) * f : 0;
+  }
+  return werte;
+}
+
+/**
+ * Bildet einen Namensvorschlag mit Gar-Zustands-Zusatz: ein vorhandener
+ * "roh"/"gegart"-Zusatz am Ende wird ersetzt, sonst wird der Ziel-Zusatz
+ * angehaengt. Bsp: ("Rindersteak roh", "gegart") → "Rindersteak gegart".
+ */
+function nameMitZusatz(name, zielZusatz) {
+  const basis = String(name || '').replace(/\s+(roh|gegart)\s*$/i, '').trim();
+  return (basis ? basis + ' ' : '') + zielZusatz;
+}
+
 /**
  * Erzeugt eine eindeutige neue Lebensmittel-ID (LM_<ms>_<hex>).
  */
@@ -3507,48 +3570,64 @@ function lmPickerSchliessen() {
 
 /* -- Rechner 2: Alkohol ----------------------------------------- */
 
+/* Makro-Felder des Alkoholrechners (alkohol_g ist automatisch). */
+const ALKOHOL_MAKRO_FELDER = NAEHRWERT_EINGABE_FELDER.filter(f => f.feld !== 'alkohol_g');
+
 async function alkoholRechnerLaden() {
   const konfig = await konfigurationHolen();
   optionenFuellen(document.getElementById('alk-gruppe'), konfig.lebensmittel_gruppen, 'Getränke');
+  /* Die uebrigen Naehrwert-Felder (pro 100 g) erzeugen und live binden. */
+  const container = document.getElementById('alk-naehrwerte');
+  container.innerHTML = naehrwertFelderHtml('alk', ALKOHOL_MAKRO_FELDER);
+  ALKOHOL_MAKRO_FELDER.forEach(f => {
+    const el = document.getElementById('alk-' + f.feld);
+    if (el) el.addEventListener('input', () => alkoholBerechnen());
+  });
   document.getElementById('alk-hinweis').textContent = '';
   alkoholBerechnen();
 }
 
 /**
- * Berechnet kcal + Alkohol-Gramm pro 100 g. Gibt das Ergebnis-Objekt
- * zurueck (oder null bei ungueltiger Eingabe).
+ * Berechnet den vollen Naehrwert-Satz pro 100 g. alkohol_g kommt aus
+ * ml×Vol%×Dichte, kcal aus Alkohol PLUS den eingegebenen Makros
+ * (Eiweiss/KH×4,1, Fett×9,3). Zucker und die "davon"-Fette werden
+ * gespeichert, aber nicht in die kcal eingerechnet (Untergruppen).
+ * @returns {Object|null} - werte-Objekt oder null bei ungueltiger Eingabe
  */
 async function alkoholBerechnen() {
   const konfig = await konfigurationHolen();
   const menge   = deutscheZahlParsen(document.getElementById('alk-menge').value);
   const einheit = document.getElementById('alk-einheit').value;
   const vol     = deutscheZahlParsen(document.getElementById('alk-vol').value);
-  const zusatz  = deutscheZahlParsen(document.getElementById('alk-zusatz').value);
-
   const mengeMl = (einheit === 'Liter') ? menge * 1000 : menge;
+
   const grossEl = document.getElementById('alk-ergebnis-kcal');
   const subEl   = document.getElementById('alk-ergebnis-sub');
-
   if (mengeMl <= 0 || vol < 0) {
     grossEl.textContent = '— kcal';
     subEl.textContent = '';
-    document.getElementById('alk-detail-alkohol').textContent = '—';
     document.getElementById('alk-detail-kcalalk').textContent = '—';
+    document.getElementById('alk-detail-kcalmakro').textContent = '—';
     return null;
   }
 
-  const reinerAlkoholG   = mengeMl * (vol / 100) * konfig.alkohol_dichte;
-  const kcalAusAlkohol   = reinerAlkoholG * konfig.alkohol_kcal_pro_g;
-  const alkoholGPro100g  = (reinerAlkoholG / mengeMl) * 100;
-  const kcalPro100g      = Math.round(alkoholGPro100g * konfig.alkohol_kcal_pro_g + zusatz);
+  const makros = naehrwertFelderLesen('alk', ALKOHOL_MAKRO_FELDER);   /* pro 100 g */
+
+  const reinerAlkoholG  = mengeMl * (vol / 100) * konfig.alkohol_dichte;
+  const alkoholGPro100g = (reinerAlkoholG / mengeMl) * 100;           /* = Vol% × Dichte */
+  const kcalAusAlkohol  = alkoholGPro100g * konfig.alkohol_kcal_pro_g;
+  const kcalAusMakros   = makros.eiweiss_g     * konfig.eiweiss_kcal_pro_g
+                        + makros.kohlenhydrate_g * konfig.kh_kcal_pro_g
+                        + makros.fett_g        * konfig.fett_kcal_pro_g;
+  const kcalPro100g     = Math.round(kcalAusAlkohol + kcalAusMakros);
 
   grossEl.textContent = `${kcalPro100g} kcal`;
   subEl.textContent   = `${zahlDe(alkoholGPro100g, 1)} g reiner Alkohol pro 100 g`;
-  document.getElementById('alk-detail-alkohol').textContent = `${zahlDe(reinerAlkoholG, 1)} g`;
-  document.getElementById('alk-detail-kcalalk').textContent = `${Math.round(kcalAusAlkohol)} kcal`;
-  document.getElementById('alk-detail-dichte').textContent  = `${zahlDe(konfig.alkohol_dichte, 1)} g/ml`;
+  document.getElementById('alk-detail-kcalalk').textContent   = `${Math.round(kcalAusAlkohol)} kcal`;
+  document.getElementById('alk-detail-kcalmakro').textContent = `${Math.round(kcalAusMakros)} kcal`;
+  document.getElementById('alk-detail-dichte').textContent    = `${zahlDe(konfig.alkohol_dichte, 1)} g/ml`;
 
-  return { kcal_pro_100g: kcalPro100g, alkohol_g: alkoholGPro100g };
+  return { kcal_pro_100g: kcalPro100g, alkohol_g: alkoholGPro100g, ...makros };
 }
 
 async function alkoholSpeichern() {
@@ -3557,10 +3636,8 @@ async function alkoholSpeichern() {
   if (!ergebnis) { fehlermeldungAnzeigen('Bitte gültige Werte eingeben.'); return; }
   if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
   const gruppe = document.getElementById('alk-gruppe').value;
-  await neuesLebensmittelSpeichern({
-    name, gruppe,
-    werte: { kcal_pro_100g: ergebnis.kcal_pro_100g, alkohol_g: ergebnis.alkohol_g },
-  });
+  /* Voller Satz: kcal, alkohol_g und die eingegebenen Makros */
+  await neuesLebensmittelSpeichern({ name, gruppe, werte: ergebnis });
   syncAnstossenNachErfassung();
   werkzeugGespeichertHinweis('alk-hinweis', name);
 }
@@ -3570,15 +3647,26 @@ async function alkoholSpeichern() {
 async function bruehepulverRechnerLaden() {
   const konfig = await konfigurationHolen();
   optionenFuellen(document.getElementById('br-gruppe'), konfig.lebensmittel_gruppen, 'Sonstiges');
+  /* Naehrwert-Felder "je Bezugsmenge" erzeugen und live binden. */
+  const container = document.getElementById('br-naehrwerte');
+  container.innerHTML = naehrwertFelderHtml('br', NAEHRWERT_EINGABE_FELDER);
+  NAEHRWERT_EINGABE_FELDER.forEach(f => {
+    const el = document.getElementById('br-' + f.feld);
+    if (el) el.addEventListener('input', () => bruehepulverBerechnen());
+  });
   document.getElementById('br-hinweis').textContent = '';
   bruehepulverBerechnen();
 }
 
+/**
+ * Rechnet die Packungsangaben (kcal + alle Naehrwerte je Bezugsmenge)
+ * auf 100 g Trockenpulver hoch (derselbe Faktor fuer alle Werte).
+ */
 function bruehepulverBerechnen() {
-  const gesamtMl   = deutscheZahlParsen(document.getElementById('br-gesamt').value);
-  const trockenG   = deutscheZahlParsen(document.getElementById('br-trocken').value);
-  const bezugKcal  = deutscheZahlParsen(document.getElementById('br-kcal').value);
-  const bezugMl    = deutscheZahlParsen(document.getElementById('br-bezug').value);
+  const gesamtMl  = deutscheZahlParsen(document.getElementById('br-gesamt').value);
+  const trockenG  = deutscheZahlParsen(document.getElementById('br-trocken').value);
+  const bezugKcal = deutscheZahlParsen(document.getElementById('br-kcal').value);
+  const bezugMl   = deutscheZahlParsen(document.getElementById('br-bezug').value);
 
   const grossEl = document.getElementById('br-ergebnis-kcal');
   if (gesamtMl <= 0 || trockenG <= 0 || bezugMl <= 0) {
@@ -3587,14 +3675,17 @@ function bruehepulverBerechnen() {
     document.getElementById('br-detail-portionen').textContent = '—';
     return null;
   }
-  const portionen   = gesamtMl / bezugMl;
-  const gesamtKcal  = portionen * bezugKcal;
-  const kcalPro100g = Math.round((gesamtKcal / trockenG) * 100);
+  const portionen = gesamtMl / bezugMl;
+  /* Faktor: von "je Bezugsmenge" auf 100 g Trockenpulver. */
+  const faktor      = (portionen / trockenG) * 100;
+  const kcalPro100g = Math.round(bezugKcal * faktor);
+  /* Uebrige Naehrwerte (je Bezugsmenge) mit demselben Faktor. */
+  const makros = naehrwertFelderLesen('br', NAEHRWERT_EINGABE_FELDER, faktor);
 
   grossEl.textContent = `${kcalPro100g} kcal`;
-  document.getElementById('br-detail-gesamt').textContent = `${Math.round(gesamtKcal)} kcal`;
+  document.getElementById('br-detail-gesamt').textContent = `${Math.round(portionen * bezugKcal)} kcal`;
   document.getElementById('br-detail-portionen').textContent = zahlDe(portionen, 0).replace(',0', '');
-  return { kcal_pro_100g: kcalPro100g };
+  return { kcal_pro_100g: kcalPro100g, ...makros };
 }
 
 async function bruehepulverSpeichern() {
@@ -3603,7 +3694,7 @@ async function bruehepulverSpeichern() {
   if (!ergebnis) { fehlermeldungAnzeigen('Bitte gültige Werte eingeben.'); return; }
   if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
   const gruppe = document.getElementById('br-gruppe').value;
-  await neuesLebensmittelSpeichern({ name, gruppe, werte: { kcal_pro_100g: ergebnis.kcal_pro_100g } });
+  await neuesLebensmittelSpeichern({ name, gruppe, werte: ergebnis });
   syncAnstossenNachErfassung();
   werkzeugGespeichertHinweis('br-hinweis', name);
 }
@@ -3649,23 +3740,55 @@ async function garfaktorDbSpeichern() {
   werkzeugGespeichertHinweis('gd-hinweis', name);
 }
 
-/* -- Rechner 5: Garfaktor fuer die Aufschreibung (nur Anzeige) -- */
+/* -- Rechner 5: Garfaktor fuer die Aufschreibung ---------------- */
 
-let garfaktorTagLm = null;   /* gewaehltes rohes Lebensmittel */
+let garfaktorTagLm = null;         /* gewaehltes Lebensmittel */
+let garfaktorTagModus = 'roh';     /* 'roh' | 'gegart' — Zustand des LM in der DB */
+let garfaktorTagErgebnis = null;   /* zuletzt berechnet: {logMenge, faktor} */
 
 async function garfaktorTagRechnerLaden() {
   const konfig = await konfigurationHolen();
   garfaktorTagLm = null;
+  garfaktorTagModus = 'roh';
+  garfaktorTagErgebnis = null;
   document.getElementById('gt-lm-anzeige').textContent = 'Kein Lebensmittel gewählt';
   document.getElementById('gt-faktor').value = zahlDe(konfig.garfaktor_default, 2);
   document.getElementById('gt-gegart').value = '';
+  document.getElementById('gt-name').value = '';
   document.getElementById('gt-hinweis').textContent = '';
+  garfaktorTagModusUiAktualisieren();
   garfaktorTagBerechnen();
 }
 
+/** Setzt den roh/gegart-Modus (welchen Zustand das DB-Lebensmittel hat). */
+function garfaktorTagModusSetzen(modus) {
+  garfaktorTagModus = (modus === 'gegart') ? 'gegart' : 'roh';
+  garfaktorTagModusUiAktualisieren();
+  garfaktorTagNameVorbelegen();
+  garfaktorTagBerechnen();
+}
+
+/** Segment-Markierung und Sichtbarkeit des Garfaktor-Felds anpassen. */
+function garfaktorTagModusUiAktualisieren() {
+  document.querySelectorAll('#gt-modus .segment-knopf').forEach(k =>
+    k.classList.toggle('aktiv', k.dataset.modus === garfaktorTagModus));
+  /* Garfaktor-Feld nur im Roh-Modus (im Gegart-Modus keine Umrechnung). */
+  document.getElementById('gt-garfaktor-feld').classList.toggle('versteckt', garfaktorTagModus === 'gegart');
+}
+
+/** Namensvorschlag fuer "In Datenbank speichern" (jeweils die Gegen-Form). */
+function garfaktorTagNameVorbelegen() {
+  if (!garfaktorTagLm) return;
+  const ziel = (garfaktorTagModus === 'roh') ? 'gegart' : 'roh';
+  document.getElementById('gt-name').value = nameMitZusatz(garfaktorTagLm.name, ziel);
+}
+
 function garfaktorTagBerechnen() {
-  const grossEl = document.getElementById('gt-ergebnis-kcal');
-  const subEl   = document.getElementById('gt-ergebnis-sub');
+  const grossEl  = document.getElementById('gt-ergebnis-kcal');
+  const subEl    = document.getElementById('gt-ergebnis-sub');
+  const rohLabel = document.getElementById('gt-detail-roh-label');
+  garfaktorTagErgebnis = null;
+
   if (!garfaktorTagLm) {
     grossEl.textContent = '— kcal';
     subEl.textContent = 'Erst ein Lebensmittel wählen';
@@ -3677,26 +3800,88 @@ function garfaktorTagBerechnen() {
   }
   const gegart = deutscheZahlParsen(document.getElementById('gt-gegart').value);
   const faktor = deutscheZahlParsen(document.getElementById('gt-faktor').value) || STANDARD_GARFAKTOR;
-  if (gegart <= 0 || faktor <= 0) {
+  if (gegart <= 0) {
     grossEl.textContent = '— kcal';
     subEl.textContent = 'Gegartes Gewicht eingeben';
     return;
   }
-  /* Rohe Menge auf ganze Gramm runden und mit diesem Wert weiterrechnen
-     (so passen Anzeige und Naehrwerte exakt zusammen). */
-  const roheMengeGerundet = Math.round(gegart / faktor);
-  const faktor100 = roheMengeGerundet / 100;
+
+  /* logMenge = Menge, die spaeter in die Aufschreibung uebernommen wird —
+     immer bezogen auf das geladene Lebensmittel (roh bzw. gegart). Damit
+     Anzeige und Naehrwerte exakt zusammenpassen, auf ganze Gramm runden. */
+  let logMenge, mengeText;
+  if (garfaktorTagModus === 'roh') {
+    logMenge  = Math.round(gegart / faktor);   /* rohe Menge */
+    mengeText = `${zahlDe(gegart, 0).replace(',0','')} g gegart = ${logMenge} g roh`;
+  } else {
+    logMenge  = Math.round(gegart);            /* gegartes Gewicht direkt */
+    mengeText = `${logMenge} g gegart (roh in der DB nicht nötig)`;
+  }
+
+  const faktor100 = logMenge / 100;
   const kcal    = Math.round(faktor100 * deutscheZahlParsen(garfaktorTagLm.kcal_pro_100g));
   const eiweiss = parseFloat((faktor100 * deutscheZahlParsen(garfaktorTagLm.eiweiss_g)).toFixed(1));
   const fett    = parseFloat((faktor100 * deutscheZahlParsen(garfaktorTagLm.fett_g)).toFixed(1));
 
   grossEl.textContent = `${kcal} kcal`;
-  subEl.textContent   = `${zahlDe(gegart, 0).replace(',0','')} g gegart = ${roheMengeGerundet} g roh`;
-  document.getElementById('gt-detail-roh').textContent     = `${roheMengeGerundet} g`;
+  subEl.textContent   = mengeText;
+  rohLabel.textContent = (garfaktorTagModus === 'roh') ? 'Rohe Menge' : 'Menge';
+  document.getElementById('gt-detail-roh').textContent     = `${logMenge} g`;
   document.getElementById('gt-detail-eiweiss').textContent = `${zahlDe(eiweiss, 1)} g`;
   document.getElementById('gt-detail-fett').textContent    = `${zahlDe(fett, 1)} g`;
-  document.getElementById('gt-hinweis').textContent =
-    `Trage in der Aufschreibung ${roheMengeGerundet} g „${garfaktorTagLm.name}" ein.`;
+  document.getElementById('gt-hinweis').textContent = '';
+
+  garfaktorTagErgebnis = { logMenge, faktor };
+}
+
+/**
+ * Option (a): Die Gegen-Form (pro 100 g) als neues Lebensmittel
+ * speichern. Roh-Modus → gegarte Werte (roh ÷ Garfaktor, konzentriert);
+ * Gegart-Modus → rohe Werte (gegart × Garfaktor, verduennt). Voller Satz.
+ */
+async function garfaktorTagSpeichern() {
+  if (!garfaktorTagLm) { fehlermeldungAnzeigen('Bitte erst ein Lebensmittel wählen.'); return; }
+  const name = document.getElementById('gt-name').value.trim();
+  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
+  const faktor = deutscheZahlParsen(document.getElementById('gt-faktor').value) || STANDARD_GARFAKTOR;
+  const umFaktor = (garfaktorTagModus === 'roh') ? (1 / faktor) : faktor;
+
+  const werte = {};
+  for (const feld of Object.keys(LEBENSMITTEL_NAEHRWERT_STELLEN)) {
+    werte[feld] = deutscheZahlParsen(garfaktorTagLm[feld]) * umFaktor;
+  }
+  const gruppe = garfaktorTagLm.gruppe || 'Sonstiges';
+  await neuesLebensmittelSpeichern({ name, gruppe, werte });
+  syncAnstossenNachErfassung();
+  werkzeugGespeichertHinweis('gt-hinweis', name);
+}
+
+/**
+ * Option (b): Die berechnete Portion in die Aufschreibung uebernehmen —
+ * oeffnet die Erfassen-Maske vorbefuellt (Lebensmittel + Menge). Der
+ * Nutzer waehlt Mahlzeit-Typ/Uhrzeit und bestaetigt wie gewohnt.
+ */
+async function garfaktorTagUebernehmen() {
+  if (!garfaktorTagLm || !garfaktorTagErgebnis) {
+    fehlermeldungAnzeigen('Bitte Lebensmittel und gegartes Gewicht eingeben.');
+    return;
+  }
+  const konfig = await konfigurationHolen();
+  erfassenAuswahl = {
+    ist_eigengericht: false,
+    id: garfaktorTagLm.lebensmittel_id,
+    name: garfaktorTagLm.name,
+    objekt: garfaktorTagLm,
+  };
+  erfassenBearbeitenId = null;
+  const uhrzeit = aktuelleUhrzeit();
+  erfassenVorbelegung = {
+    menge:   mengeFormatieren(garfaktorTagErgebnis.logMenge),
+    einheit: 'Gramm',
+    typ:     mahlzeitTypAusUhrzeit(uhrzeit, konfig),
+    uhrzeit,
+  };
+  await navigieren('erfassen-menge');
 }
 
 /* -- Rechner 1: Rezeptrechner ----------------------------------- */
@@ -3926,11 +4111,16 @@ function ereignisWerkzeugeRegistrieren() {
       garfaktorTagLm = lm;
       document.getElementById('gt-lm-anzeige').textContent =
         `${lm.name} · ${Math.round(deutscheZahlParsen(lm.kcal_pro_100g))} kcal/100g`;
+      garfaktorTagNameVorbelegen();
       garfaktorTagBerechnen();
     }, false);
   });
+  document.querySelectorAll('#gt-modus .segment-knopf').forEach(knopf => {
+    knopf.addEventListener('click', () => garfaktorTagModusSetzen(knopf.dataset.modus));
+  });
   ['gt-gegart', 'gt-faktor'].forEach(id => anInput(id, () => garfaktorTagBerechnen()));
-  anClick('gt-anzeigen', () => garfaktorTagBerechnen());
+  anClick('gt-speichern', () => garfaktorTagSpeichern().catch(speichernFehler));
+  anClick('gt-uebernehmen', () => garfaktorTagUebernehmen().catch(f => fehlermeldungAnzeigen('Übernehmen fehlgeschlagen: ' + f.message)));
 
   /* Rechner 1: Rezeptrechner */
   anClick('rz-zutat-hinzufuegen', () => rezeptZutatHinzufuegen());

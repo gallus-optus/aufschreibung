@@ -538,14 +538,15 @@
         <div class="formular-feld"><label for="alk-einheit">Einheit</label><select id="alk-einheit"><option>ml</option><option>Liter</option></select></div>
       </div>
       <div class="formular-feld"><label for="alk-vol">Alkoholgehalt (Vol %)</label><input type="text" inputmode="decimal" id="alk-vol" value="40"></div>
-      <div class="formular-feld"><label for="alk-zusatz">Zusätzliche kcal pro 100 g (Zucker o. ä.)</label><input type="text" inputmode="decimal" id="alk-zusatz" value="0"></div>
+      <div class="detail-sektion-titel">Weitere Nährwerte pro 100 g (optional)</div>
+      <div id="alk-naehrwerte"></div>
       <div class="rechner-ergebnis">
         <div class="rechner-ergebnis-titel">Ergebnis pro 100 g</div>
         <div class="rechner-ergebnis-gross" id="alk-ergebnis-kcal">— kcal</div>
         <div class="rechner-ergebnis-sub" id="alk-ergebnis-sub"></div>
         <div class="rechner-detail">
-          <div class="rechner-nrow"><span class="l">Reiner Alkohol (Menge)</span><span id="alk-detail-alkohol">—</span></div>
           <div class="rechner-nrow"><span class="l">kcal aus Alkohol</span><span id="alk-detail-kcalalk">—</span></div>
+          <div class="rechner-nrow"><span class="l">kcal aus Makros</span><span id="alk-detail-kcalmakro">—</span></div>
           <div class="rechner-nrow"><span class="l">Dichte-Faktor</span><span id="alk-detail-dichte">0,8 g/ml</span></div>
         </div>
       </div>
@@ -553,7 +554,7 @@
       <div class="formular-feld"><label for="alk-gruppe">Gruppe</label><select id="alk-gruppe"></select></div>
       <button type="button" id="alk-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
       <div class="formular-hinweis" id="alk-hinweis"></div>
-      <div class="md-hint-text">Speichert kcal_pro_100g und alkohol_g — für die spätere Alkohol-Auswertung.</div>
+      <div class="md-hint-text">alkohol_g wird automatisch aus ml × Vol% × 0,8 berechnet. kcal = Alkohol × 7,1 plus Makros (Eiweiß/KH × 4,1, Fett × 9,3).</div>
     </div>
   </div>
 
@@ -570,11 +571,12 @@
     <div class="ansicht-inhalt">
       <div class="formular-feld"><label for="br-gesamt">Zubereitbare Gesamtmenge Brühe (ml)</label><input type="text" inputmode="decimal" id="br-gesamt" value="16000"></div>
       <div class="formular-feld"><label for="br-trocken">Trockenmasse Pulver in der Packung (g)</label><input type="text" inputmode="decimal" id="br-trocken" value="380"></div>
-      <div class="detail-sektion-titel">Nährwertangabe laut Packung</div>
+      <div class="detail-sektion-titel">Nährwertangabe laut Packung (je Bezugsmenge)</div>
       <div class="formular-reihe2">
         <div class="formular-feld"><label for="br-kcal">kcal</label><input type="text" inputmode="decimal" id="br-kcal" value="5"></div>
         <div class="formular-feld"><label for="br-bezug">je … ml zubereitet</label><input type="text" inputmode="decimal" id="br-bezug" value="80"></div>
       </div>
+      <div id="br-naehrwerte"></div>
       <div class="rechner-ergebnis">
         <div class="rechner-ergebnis-titel">Ergebnis pro 100 g Trockenpulver</div>
         <div class="rechner-ergebnis-gross" id="br-ergebnis-kcal">— kcal</div>
@@ -640,26 +642,32 @@
       <h2 class="header-titel">Garfaktor → Aufschreibung</h2>
     </div>
     <div class="ansicht-inhalt">
-      <div class="md-hint-text" style="margin-bottom:14px">Für Lebensmittel, die in Deiner Datenbank <b>roh</b> stehen, die Du aber <b>gegart</b> gegessen hast.</div>
+      <div class="md-hint-text" style="margin-bottom:12px">Du hast etwas <b>gegart</b> gegessen und kennst das gegarte Gewicht. Wähle, ob das Lebensmittel in Deiner Datenbank <b>roh</b> oder <b>gegart</b> geführt ist.</div>
+      <div class="segment-control" id="gt-modus">
+        <button class="segment-knopf aktiv" data-modus="roh">Roh in der DB</button>
+        <button class="segment-knopf" data-modus="gegart">Gegart in der DB</button>
+      </div>
       <div class="formular-feld">
-        <label>Lebensmittel (roh) aus Datenbank</label>
+        <label>Lebensmittel aus Datenbank</label>
         <button type="button" id="gt-lm-waehlen" class="picker-feld"><span id="gt-lm-anzeige">Kein Lebensmittel gewählt</span></button>
       </div>
       <div class="formular-feld"><label for="gt-gegart">Gegartes Gewicht, das Du gegessen hast (g)</label><input type="text" inputmode="decimal" id="gt-gegart" value="150"></div>
-      <div class="formular-feld"><label for="gt-faktor">Garfaktor (gegart = roh × Faktor)</label><input type="text" inputmode="decimal" id="gt-faktor" value="0,77"></div>
+      <div class="formular-feld" id="gt-garfaktor-feld"><label for="gt-faktor">Garfaktor (gegart = roh × Faktor)</label><input type="text" inputmode="decimal" id="gt-faktor" value="0,77"></div>
       <div class="rechner-ergebnis">
         <div class="rechner-ergebnis-titel">Für Deine Portion</div>
         <div class="rechner-ergebnis-gross" id="gt-ergebnis-kcal">— kcal</div>
         <div class="rechner-ergebnis-sub" id="gt-ergebnis-sub"></div>
         <div class="rechner-detail">
-          <div class="rechner-nrow"><span class="l">Rohe Menge</span><span id="gt-detail-roh">—</span></div>
+          <div class="rechner-nrow"><span class="l" id="gt-detail-roh-label">Rohe Menge</span><span id="gt-detail-roh">—</span></div>
           <div class="rechner-nrow"><span class="l">Eiweiß</span><span id="gt-detail-eiweiss">—</span></div>
           <div class="rechner-nrow"><span class="l">Fett</span><span id="gt-detail-fett">—</span></div>
         </div>
       </div>
-      <button type="button" id="gt-anzeigen" class="knopf-voll-primaer">Werte anzeigen zum Übernehmen</button>
+      <button type="button" id="gt-uebernehmen" class="knopf-voll-primaer">In die Aufschreibung übernehmen</button>
+      <div class="formular-feld" style="margin-top:14px"><label for="gt-name">In Datenbank speichern als (Gegen-Form)</label><input type="text" id="gt-name" placeholder="Name"></div>
+      <button type="button" id="gt-speichern" class="knopf-voll-ghost">In Datenbank speichern</button>
       <div class="formular-hinweis" id="gt-hinweis"></div>
-      <div class="md-hint-text">Reiner Rechner — die Erfassung machst Du normal über die Aufschreibung mit der errechneten rohen Menge.</div>
+      <div class="md-hint-text">„In die Aufschreibung übernehmen" öffnet die Erfassen-Maske vorbefüllt. „In Datenbank speichern" legt die jeweils andere Form (roh ↔ gegart) als neues Lebensmittel an.</div>
     </div>
   </div>
 
