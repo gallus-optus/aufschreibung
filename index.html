@@ -457,11 +457,6 @@
         <span class="werkzeug-text"><b>Brühepulver-Rechner</b><span>Nährwerte pro 100 g Trockenpulver</span></span>
         <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
       </button>
-      <button class="werkzeug-reihe" data-werkzeug="garfaktor-db">
-        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 6.5 6 10a6 6 0 0 1 -12 0c0-1.7 .7-3 1.5-4c.2 1 .8 1.7 1.5 2c0-2 1-4 3-8z"/></svg></span>
-        <span class="werkzeug-text"><b>Garfaktor: Quelle → Datenbank</b><span>Gegarte Angabe auf roh umrechnen</span></span>
-        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
-      </button>
       <button class="werkzeug-reihe" data-werkzeug="garfaktor-tag">
         <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 6.5 6 10a6 6 0 0 1 -12 0c0-1.7 .7-3 1.5-4c.2 1 .8 1.7 1.5 2c0-2 1-4 3-8z"/></svg></span>
         <span class="werkzeug-text"><b>Garfaktor: für die Aufschreibung</b><span>Gegartes Gewicht auf Portion umrechnen</span></span>
@@ -589,45 +584,6 @@
       <div class="formular-feld"><label for="br-gruppe">Gruppe</label><select id="br-gruppe"></select></div>
       <button type="button" id="br-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
       <div class="formular-hinweis" id="br-hinweis"></div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       BILDSCHIRM 16: Garfaktor Quelle → Datenbank
-       ============================================================ -->
-  <div id="ansicht-werkzeug-garfaktor-db" class="ansicht">
-    <div class="standard-header">
-      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <h2 class="header-titel">Garfaktor → Datenbank</h2>
-    </div>
-    <div class="ansicht-inhalt">
-      <div class="md-hint-text" style="margin-bottom:14px">Für Lebensmittel, deren Quelle nur <b>gegarte</b> Nährwerte angibt. Rechnet auf roh um, passend zu Deinen rohen Datenbank-Angaben.</div>
-      <div class="detail-sektion-titel">Gegarte Nährwerte (laut Quelle, pro 100 g)</div>
-      <div class="formular-reihe2">
-        <div class="formular-feld"><label for="gd-kcal">kcal</label><input type="text" inputmode="decimal" id="gd-kcal" value="250"></div>
-        <div class="formular-feld"><label for="gd-eiweiss">Eiweiß g</label><input type="text" inputmode="decimal" id="gd-eiweiss" value="30"></div>
-      </div>
-      <div class="formular-reihe2">
-        <div class="formular-feld"><label for="gd-fett">Fett g</label><input type="text" inputmode="decimal" id="gd-fett" value="14"></div>
-        <div class="formular-feld"><label for="gd-salz">Salz g</label><input type="text" inputmode="decimal" id="gd-salz" value="0,2"></div>
-      </div>
-      <div class="formular-feld"><label for="gd-faktor">Garfaktor (gegart = roh × Faktor)</label><input type="text" inputmode="decimal" id="gd-faktor" value="0,77"></div>
-      <div class="rechner-ergebnis">
-        <div class="rechner-ergebnis-titel">Umgerechnet auf roh (pro 100 g)</div>
-        <div class="rechner-ergebnis-gross" id="gd-ergebnis-kcal">— kcal</div>
-        <div class="rechner-ergebnis-sub" id="gd-ergebnis-sub"></div>
-        <div class="rechner-detail">
-          <div class="rechner-nrow"><span class="l">Eiweiß</span><span id="gd-detail-eiweiss">—</span></div>
-          <div class="rechner-nrow"><span class="l">Fett</span><span id="gd-detail-fett">—</span></div>
-          <div class="rechner-nrow"><span class="l">Salz</span><span id="gd-detail-salz">—</span></div>
-        </div>
-      </div>
-      <div class="formular-feld"><label for="gd-name">In Datenbank speichern als</label><input type="text" id="gd-name" placeholder="z. B. Rindersteak roh"></div>
-      <div class="formular-feld"><label for="gd-gruppe">Gruppe</label><select id="gd-gruppe"></select></div>
-      <button type="button" id="gd-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
-      <div class="formular-hinweis" id="gd-hinweis"></div>
     </div>
   </div>
 

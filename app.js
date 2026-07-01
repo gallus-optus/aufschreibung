@@ -1341,7 +1341,6 @@ const ANSICHT_ZU_TAB = {
   'ansicht-werkzeug-rezept':         'mehr',
   'ansicht-werkzeug-alkohol':        'mehr',
   'ansicht-werkzeug-bruehe':         'mehr',
-  'ansicht-werkzeug-garfaktor-db':   'mehr',
   'ansicht-werkzeug-garfaktor-tag':  'mehr',
 };
 
@@ -1483,7 +1482,7 @@ async function routeVerarbeiten() {
       break;
     case 'werkzeug':
       /* Ein bestimmter Rechner; parameter = rezept|alkohol|bruehe|
-         garfaktor-db|garfaktor-tag */
+         garfaktor-tag */
       await werkzeugOeffnen(parameter);
       break;
     case 'lebensmittel-detail':
@@ -3699,47 +3698,6 @@ async function bruehepulverSpeichern() {
   werkzeugGespeichertHinweis('br-hinweis', name);
 }
 
-/* -- Rechner 4: Garfaktor Quelle → Datenbank -------------------- */
-
-async function garfaktorDbRechnerLaden() {
-  const konfig = await konfigurationHolen();
-  optionenFuellen(document.getElementById('gd-gruppe'), konfig.lebensmittel_gruppen, 'Fleisch & Wurst');
-  document.getElementById('gd-faktor').value = zahlDe(konfig.garfaktor_default, 2);
-  document.getElementById('gd-hinweis').textContent = '';
-  garfaktorDbBerechnen();
-}
-
-function garfaktorDbBerechnen() {
-  const kcal    = deutscheZahlParsen(document.getElementById('gd-kcal').value);
-  const eiweiss = deutscheZahlParsen(document.getElementById('gd-eiweiss').value);
-  const fett    = deutscheZahlParsen(document.getElementById('gd-fett').value);
-  const salz    = deutscheZahlParsen(document.getElementById('gd-salz').value);
-  const faktor  = deutscheZahlParsen(document.getElementById('gd-faktor').value) || STANDARD_GARFAKTOR;
-
-  const rohKcal    = Math.round(kcal * faktor);
-  const rohEiweiss = parseFloat((eiweiss * faktor).toFixed(1));
-  const rohFett    = parseFloat((fett * faktor).toFixed(1));
-  const rohSalz    = parseFloat((salz * faktor).toFixed(2));
-
-  document.getElementById('gd-ergebnis-kcal').textContent = `${rohKcal} kcal`;
-  document.getElementById('gd-ergebnis-sub').textContent  = `${zahlDe(kcal, 0).replace(',0','')} × ${zahlDe(faktor, 2)} = ${rohKcal} (Nährwerte verdünnen sich)`;
-  document.getElementById('gd-detail-eiweiss').textContent = `${zahlDe(rohEiweiss, 1)} g`;
-  document.getElementById('gd-detail-fett').textContent    = `${zahlDe(rohFett, 1)} g`;
-  document.getElementById('gd-detail-salz').textContent    = `${zahlDe(rohSalz, 2)} g`;
-
-  return { kcal_pro_100g: rohKcal, eiweiss_g: rohEiweiss, fett_g: rohFett, salz_g: rohSalz };
-}
-
-async function garfaktorDbSpeichern() {
-  const ergebnis = garfaktorDbBerechnen();
-  const name = document.getElementById('gd-name').value.trim();
-  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
-  const gruppe = document.getElementById('gd-gruppe').value;
-  await neuesLebensmittelSpeichern({ name, gruppe, werte: ergebnis });
-  syncAnstossenNachErfassung();
-  werkzeugGespeichertHinweis('gd-hinweis', name);
-}
-
 /* -- Rechner 5: Garfaktor fuer die Aufschreibung ---------------- */
 
 let garfaktorTagLm = null;         /* gewaehltes Lebensmittel */
@@ -4066,7 +4024,6 @@ async function werkzeugOeffnen(welches) {
   switch (welches) {
     case 'alkohol':       ansichtAnzeigen('ansicht-werkzeug-alkohol');       await alkoholRechnerLaden(); break;
     case 'bruehe':        ansichtAnzeigen('ansicht-werkzeug-bruehe');        await bruehepulverRechnerLaden(); break;
-    case 'garfaktor-db':  ansichtAnzeigen('ansicht-werkzeug-garfaktor-db');  await garfaktorDbRechnerLaden(); break;
     case 'garfaktor-tag': ansichtAnzeigen('ansicht-werkzeug-garfaktor-tag'); await garfaktorTagRechnerLaden(); break;
     case 'rezept':        ansichtAnzeigen('ansicht-werkzeug-rezept');        await rezeptRechnerLaden(); break;
     default:              await navigieren('werkzeuge');
@@ -4100,10 +4057,6 @@ function ereignisWerkzeugeRegistrieren() {
   /* Rechner 3: Bruehepulver */
   ['br-gesamt', 'br-trocken', 'br-kcal', 'br-bezug'].forEach(id => anInput(id, () => bruehepulverBerechnen()));
   anClick('br-speichern', () => bruehepulverSpeichern().catch(speichernFehler));
-
-  /* Rechner 4: Garfaktor → DB */
-  ['gd-kcal', 'gd-eiweiss', 'gd-fett', 'gd-salz', 'gd-faktor'].forEach(id => anInput(id, () => garfaktorDbBerechnen()));
-  anClick('gd-speichern', () => garfaktorDbSpeichern().catch(speichernFehler));
 
   /* Rechner 5: Garfaktor → Aufschreibung */
   anClick('gt-lm-waehlen', () => {
