@@ -14,11 +14,13 @@ Ein Bereich „Werkzeuge" im Mehr-Tab mit fünf Rechnern:
 - **Rezeptrechner** — Eigengericht aus Zutaten zusammenstellen, mit
   Endgewicht-Korrektur (Wasser verkocht/kommt hinzu), als neues Gericht
   speichern; bestehendes Rezept laden und abgewandelt neu speichern
-- **Alkoholrechner** — kcal und Alkohol-Gramm pro 100 g
-- **Brühepulver-Rechner** — Nährwerte pro 100 g Trockenpulver
+- **Alkoholrechner** — Alkohol-Gramm automatisch (ml × Vol% × 0,8) plus
+  voller Nährwert-Satz pro 100 g
+- **Brühepulver-Rechner** — voller Nährwert-Satz pro 100 g Trockenpulver
 - **Garfaktor: Quelle → Datenbank** — gegarte Nährwerte auf roh umrechnen
-- **Garfaktor: für die Aufschreibung** — gegartes Gewicht auf rohe Portion
-  umrechnen (reine Anzeige)
+- **Garfaktor: für die Aufschreibung** — gegartes Gewicht umrechnen
+  (Lebensmittel roh oder gegart in der DB); Ergebnis direkt in die
+  Aufschreibung übernehmen oder die Gegen-Form als Lebensmittel speichern
 
 Neu angelegte Lebensmittel/Gerichte werden über den Dropbox-Sync
 automatisch hochgeladen; im Rezeptrechner erstellte Gerichte erscheinen

@@ -108,3 +108,51 @@
 - **Neue Lebensmittel aus den Rechnern** führen nur die eingegebenen Werte
   (Rest 0). Bei Bedarf können die restlichen Nährwerte später ergänzt
   werden (spätere Phase / manuell in der CSV).
+
+---
+
+## Nachtrag — Tests zur Nacharbeit (voller Satz, Rechner 5)
+
+Nach dem Update App einmal schließen/neu öffnen (Cache **v0.4.1**).
+
+### Test 13: Alkoholrechner mit Makros
+1. Werkzeuge → Alkoholrechner. Menge `40` ml, Vol% `40`, alle weiteren
+   Nährwerte `0` lassen.
+2. **Erwartet:** weiterhin **227 kcal**, „kcal aus Alkohol 227", „kcal aus
+   Makros 0".
+3. Jetzt z. B. Eiweiß `1`, Kohlenhydrate `2`, Fett `3` eintragen.
+4. **Erwartet:** kcal steigt auf **267** (227 + 40,2). Speichern legt ein
+   Lebensmittel mit vollem Satz + `alkohol_g` an.
+
+### Test 14: Brühepulver mit vollem Satz
+1. Werkzeuge → Brühepulver. Gesamt `16000`, Trocken `380`, kcal `5`, je
+   `80` ml → **263 kcal**.
+2. Weitere Nährwerte „je Bezugsmenge" eintragen (z. B. Eiweiß `2`).
+3. **Erwartet:** Der Wert wird mit demselben Faktor hochgerechnet und beim
+   Speichern mit abgelegt.
+
+### Test 15: Rechner 5 — Roh-Modus (wie bisher)
+1. Werkzeuge → Garfaktor: für die Aufschreibung. Umschalter auf **„Roh in
+   der DB"**. Ein rohes Lebensmittel wählen, gegartes Gewicht `150`,
+   Garfaktor `0,77`.
+2. **Erwartet:** Rohe Menge **195 g**, Portions-Nährwerte korrekt.
+
+### Test 16: Rechner 5 — Gegart-Modus
+1. Umschalter auf **„Gegart in der DB"**.
+2. **Erwartet:** Das Garfaktor-Feld verschwindet. Gegartes Gewicht `150` →
+   die Nährwerte werden direkt aus den (gegarten) DB-Werten für 150 g
+   berechnet (keine Umrechnung).
+
+### Test 17: Rechner 5 — In die Aufschreibung übernehmen
+1. Im Rechner 5 (roh oder gegart) ein Lebensmittel + Gewicht eingeben.
+2. **„In die Aufschreibung übernehmen"** antippen.
+3. **Erwartet:** Die Erfassen-Maske öffnet vorbefüllt (Lebensmittel +
+   berechnete Menge in Gramm). Mahlzeit-Typ/Uhrzeit sind vorbelegt; nach
+   Bestätigung erscheint der Eintrag normal in der Heute-Ansicht.
+
+### Test 18: Rechner 5 — Gegen-Form speichern
+1. Roh-Modus, Lebensmittel „… roh" gewählt → Namensvorschlag endet auf
+   **„gegart"**. **„In Datenbank speichern"** antippen.
+2. **Erwartet:** Ein neues Lebensmittel „… gegart" mit den konzentrierten
+   Werten (roh ÷ Garfaktor) erscheint in der Datenbank. Umgekehrt legt der
+   Gegart-Modus die rohe Form an. Beide dürfen nebeneinander existieren.
