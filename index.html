@@ -215,6 +215,10 @@
     </div>
     <div id="einstellungen-inhalt" class="ansicht-inhalt">
 
+      <!-- Abschnitt Werkzeuge (Phase D) -->
+      <div class="einstellungen-abschnitt-titel">Werkzeuge</div>
+      <button id="knopf-werkzeuge" class="aktions-reihe">Rechner öffnen (Rezept, Alkohol, Garfaktor …)</button>
+
       <!-- Abschnitt Konto -->
       <div class="einstellungen-abschnitt-titel">Konto</div>
       <div class="einstellungen-reihe">
@@ -274,7 +278,7 @@
       <div class="einstellungen-abschnitt-titel">Über</div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Version</span>
-        <span class="einstellungen-wert">0.3 (Phase F)</span>
+        <span class="einstellungen-wert">0.4 (Phase D)</span>
       </div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Quelltext</span>
@@ -424,6 +428,276 @@
       </div>
       <button type="button" id="menge-hinzufuegen" class="knopf-voll-primaer">Zur Aufschreibung hinzufügen</button>
       <button type="button" id="menge-loeschen" class="knopf-voll-ghost gefahr versteckt">Eintrag löschen</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 12: Werkzeuge-Übersicht (Phase D)
+       ============================================================ -->
+  <div id="ansicht-werkzeuge" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="einstellungen" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Werkzeuge</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <button class="werkzeug-reihe" data-werkzeug="rezept">
+        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19h12v-2H6z"/><path d="M7.5 17c-2.1 0-3.7-1.6-3.7-3.6c0-1.7 1.2-3 2.8-3.4C6.4 8.2 8.2 6.8 10.3 6.8c.7 0 1.3.2 1.7.5c.4-.3 1-.5 1.7-.5c2.1 0 3.9 1.4 3.7 3.2c1.6.4 2.8 1.7 2.8 3.4c0 2-1.6 3.6-3.7 3.6z"/></svg></span>
+        <span class="werkzeug-text"><b>Rezeptrechner</b><span>Eigengericht aus Zutaten, mit Endgewicht</span></span>
+        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
+      </button>
+      <button class="werkzeug-reihe" data-werkzeug="alkohol">
+        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14l-7 8z"/><line x1="12" y1="12" x2="12" y2="20"/><line x1="8" y1="20" x2="16" y2="20"/></svg></span>
+        <span class="werkzeug-text"><b>Alkoholrechner</b><span>kcal und Alkohol pro 100 g</span></span>
+        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
+      </button>
+      <button class="werkzeug-reihe" data-werkzeug="bruehe">
+        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1 -16 0z"/><path d="M9 4c0 1-1 1-1 2s1 1 1 2"/><path d="M13 4c0 1-1 1-1 2s1 1 1 2"/></svg></span>
+        <span class="werkzeug-text"><b>Brühepulver-Rechner</b><span>Nährwerte pro 100 g Trockenpulver</span></span>
+        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
+      </button>
+      <button class="werkzeug-reihe" data-werkzeug="garfaktor-db">
+        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 6.5 6 10a6 6 0 0 1 -12 0c0-1.7 .7-3 1.5-4c.2 1 .8 1.7 1.5 2c0-2 1-4 3-8z"/></svg></span>
+        <span class="werkzeug-text"><b>Garfaktor: Quelle → Datenbank</b><span>Gegarte Angabe auf roh umrechnen</span></span>
+        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
+      </button>
+      <button class="werkzeug-reihe" data-werkzeug="garfaktor-tag">
+        <span class="werkzeug-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 6 6.5 6 10a6 6 0 0 1 -12 0c0-1.7 .7-3 1.5-4c.2 1 .8 1.7 1.5 2c0-2 1-4 3-8z"/></svg></span>
+        <span class="werkzeug-text"><b>Garfaktor: für die Aufschreibung</b><span>Gegartes Gewicht auf Portion umrechnen</span></span>
+        <span class="werkzeug-chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg></span>
+      </button>
+      <div class="werkzeug-fussnote">Weitere Werkzeuge folgen später</div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 13: Rezeptrechner
+       ============================================================ -->
+  <div id="ansicht-werkzeug-rezept" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Rezeptrechner</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="detail-sektion-titel">Zutaten</div>
+      <div id="rz-zutaten"></div>
+      <button type="button" id="rz-zutat-hinzufuegen" class="rezept-zutat-hinzufuegen">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+        Zutat hinzufügen
+      </button>
+      <div class="formular-feld" style="margin-top:14px">
+        <label for="rz-rohmasse">Rohmasse (Summe Zutaten)</label>
+        <input type="text" id="rz-rohmasse" readonly>
+      </div>
+      <div class="formular-feld">
+        <label for="rz-endgewicht">Endgewicht nach dem Kochen (gewogen)</label>
+        <input type="text" inputmode="decimal" id="rz-endgewicht">
+      </div>
+      <div class="rechner-ergebnis">
+        <div class="rechner-ergebnis-titel">Ergebnis pro 100 g</div>
+        <div class="rechner-ergebnis-gross" id="rz-ergebnis-kcal">— kcal</div>
+        <div class="rechner-ergebnis-sub" id="rz-ergebnis-sub"></div>
+        <div class="rechner-detail">
+          <div class="rechner-nrow"><span class="l">Eiweiß</span><span id="rz-detail-eiweiss">—</span></div>
+          <div class="rechner-nrow"><span class="l">Kohlenhydrate</span><span id="rz-detail-kh">—</span></div>
+          <div class="rechner-nrow"><span class="l">Fett</span><span id="rz-detail-fett">—</span></div>
+          <div class="rechner-nrow"><span class="l">Salz</span><span id="rz-detail-salz">—</span></div>
+        </div>
+      </div>
+      <div class="formular-feld">
+        <label for="rz-name">Als Eigengericht speichern unter</label>
+        <input type="text" id="rz-name" placeholder="Name des Gerichts">
+      </div>
+      <div class="formular-feld">
+        <label for="rz-kategorie">Kategorie</label>
+        <select id="rz-kategorie"></select>
+      </div>
+      <button type="button" id="rz-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
+      <button type="button" id="rz-laden" class="knopf-voll-ghost">Bestehendes Rezept laden</button>
+      <div class="formular-hinweis" id="rz-hinweis"></div>
+      <div class="md-hint-text">Verkocht Wasser (Endgewicht &lt; Rohmasse), steigen die Werte pro 100 g. Fehlt eine Zutat in der Datenbank, lege sie erst dort an.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 14: Alkoholrechner
+       ============================================================ -->
+  <div id="ansicht-werkzeug-alkohol" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Alkoholrechner</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="formular-reihe2">
+        <div class="formular-feld"><label for="alk-menge">Menge</label><input type="text" inputmode="decimal" id="alk-menge" value="40"></div>
+        <div class="formular-feld"><label for="alk-einheit">Einheit</label><select id="alk-einheit"><option>ml</option><option>Liter</option></select></div>
+      </div>
+      <div class="formular-feld"><label for="alk-vol">Alkoholgehalt (Vol %)</label><input type="text" inputmode="decimal" id="alk-vol" value="40"></div>
+      <div class="formular-feld"><label for="alk-zusatz">Zusätzliche kcal pro 100 g (Zucker o. ä.)</label><input type="text" inputmode="decimal" id="alk-zusatz" value="0"></div>
+      <div class="rechner-ergebnis">
+        <div class="rechner-ergebnis-titel">Ergebnis pro 100 g</div>
+        <div class="rechner-ergebnis-gross" id="alk-ergebnis-kcal">— kcal</div>
+        <div class="rechner-ergebnis-sub" id="alk-ergebnis-sub"></div>
+        <div class="rechner-detail">
+          <div class="rechner-nrow"><span class="l">Reiner Alkohol (Menge)</span><span id="alk-detail-alkohol">—</span></div>
+          <div class="rechner-nrow"><span class="l">kcal aus Alkohol</span><span id="alk-detail-kcalalk">—</span></div>
+          <div class="rechner-nrow"><span class="l">Dichte-Faktor</span><span id="alk-detail-dichte">0,8 g/ml</span></div>
+        </div>
+      </div>
+      <div class="formular-feld"><label for="alk-name">In Datenbank speichern als</label><input type="text" id="alk-name" placeholder="z. B. Whiskey Single Malt"></div>
+      <div class="formular-feld"><label for="alk-gruppe">Gruppe</label><select id="alk-gruppe"></select></div>
+      <button type="button" id="alk-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
+      <div class="formular-hinweis" id="alk-hinweis"></div>
+      <div class="md-hint-text">Speichert kcal_pro_100g und alkohol_g — für die spätere Alkohol-Auswertung.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 15: Brühepulver-Rechner
+       ============================================================ -->
+  <div id="ansicht-werkzeug-bruehe" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Brühepulver-Rechner</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="formular-feld"><label for="br-gesamt">Zubereitbare Gesamtmenge Brühe (ml)</label><input type="text" inputmode="decimal" id="br-gesamt" value="16000"></div>
+      <div class="formular-feld"><label for="br-trocken">Trockenmasse Pulver in der Packung (g)</label><input type="text" inputmode="decimal" id="br-trocken" value="380"></div>
+      <div class="detail-sektion-titel">Nährwertangabe laut Packung</div>
+      <div class="formular-reihe2">
+        <div class="formular-feld"><label for="br-kcal">kcal</label><input type="text" inputmode="decimal" id="br-kcal" value="5"></div>
+        <div class="formular-feld"><label for="br-bezug">je … ml zubereitet</label><input type="text" inputmode="decimal" id="br-bezug" value="80"></div>
+      </div>
+      <div class="rechner-ergebnis">
+        <div class="rechner-ergebnis-titel">Ergebnis pro 100 g Trockenpulver</div>
+        <div class="rechner-ergebnis-gross" id="br-ergebnis-kcal">— kcal</div>
+        <div class="rechner-detail">
+          <div class="rechner-nrow"><span class="l">Gesamt-kcal der Packung</span><span id="br-detail-gesamt">—</span></div>
+          <div class="rechner-nrow"><span class="l">Portionen</span><span id="br-detail-portionen">—</span></div>
+        </div>
+      </div>
+      <div class="formular-feld"><label for="br-name">In Datenbank speichern als</label><input type="text" id="br-name" placeholder="z. B. Gekörnte Brühe Gemüse"></div>
+      <div class="formular-feld"><label for="br-gruppe">Gruppe</label><select id="br-gruppe"></select></div>
+      <button type="button" id="br-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
+      <div class="formular-hinweis" id="br-hinweis"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 16: Garfaktor Quelle → Datenbank
+       ============================================================ -->
+  <div id="ansicht-werkzeug-garfaktor-db" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Garfaktor → Datenbank</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="md-hint-text" style="margin-bottom:14px">Für Lebensmittel, deren Quelle nur <b>gegarte</b> Nährwerte angibt. Rechnet auf roh um, passend zu Deinen rohen Datenbank-Angaben.</div>
+      <div class="detail-sektion-titel">Gegarte Nährwerte (laut Quelle, pro 100 g)</div>
+      <div class="formular-reihe2">
+        <div class="formular-feld"><label for="gd-kcal">kcal</label><input type="text" inputmode="decimal" id="gd-kcal" value="250"></div>
+        <div class="formular-feld"><label for="gd-eiweiss">Eiweiß g</label><input type="text" inputmode="decimal" id="gd-eiweiss" value="30"></div>
+      </div>
+      <div class="formular-reihe2">
+        <div class="formular-feld"><label for="gd-fett">Fett g</label><input type="text" inputmode="decimal" id="gd-fett" value="14"></div>
+        <div class="formular-feld"><label for="gd-salz">Salz g</label><input type="text" inputmode="decimal" id="gd-salz" value="0,2"></div>
+      </div>
+      <div class="formular-feld"><label for="gd-faktor">Garfaktor (gegart = roh × Faktor)</label><input type="text" inputmode="decimal" id="gd-faktor" value="0,77"></div>
+      <div class="rechner-ergebnis">
+        <div class="rechner-ergebnis-titel">Umgerechnet auf roh (pro 100 g)</div>
+        <div class="rechner-ergebnis-gross" id="gd-ergebnis-kcal">— kcal</div>
+        <div class="rechner-ergebnis-sub" id="gd-ergebnis-sub"></div>
+        <div class="rechner-detail">
+          <div class="rechner-nrow"><span class="l">Eiweiß</span><span id="gd-detail-eiweiss">—</span></div>
+          <div class="rechner-nrow"><span class="l">Fett</span><span id="gd-detail-fett">—</span></div>
+          <div class="rechner-nrow"><span class="l">Salz</span><span id="gd-detail-salz">—</span></div>
+        </div>
+      </div>
+      <div class="formular-feld"><label for="gd-name">In Datenbank speichern als</label><input type="text" id="gd-name" placeholder="z. B. Rindersteak roh"></div>
+      <div class="formular-feld"><label for="gd-gruppe">Gruppe</label><select id="gd-gruppe"></select></div>
+      <button type="button" id="gd-speichern" class="knopf-voll-primaer">In Datenbank speichern</button>
+      <div class="formular-hinweis" id="gd-hinweis"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BILDSCHIRM 17: Garfaktor für die Aufschreibung
+       ============================================================ -->
+  <div id="ansicht-werkzeug-garfaktor-tag" class="ansicht">
+    <div class="standard-header">
+      <button class="header-zurueck-knopf werkzeug-zurueck" data-zurueck="werkzeuge" aria-label="Zurück">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="header-titel">Garfaktor → Aufschreibung</h2>
+    </div>
+    <div class="ansicht-inhalt">
+      <div class="md-hint-text" style="margin-bottom:14px">Für Lebensmittel, die in Deiner Datenbank <b>roh</b> stehen, die Du aber <b>gegart</b> gegessen hast.</div>
+      <div class="formular-feld">
+        <label>Lebensmittel (roh) aus Datenbank</label>
+        <button type="button" id="gt-lm-waehlen" class="picker-feld"><span id="gt-lm-anzeige">Kein Lebensmittel gewählt</span></button>
+      </div>
+      <div class="formular-feld"><label for="gt-gegart">Gegartes Gewicht, das Du gegessen hast (g)</label><input type="text" inputmode="decimal" id="gt-gegart" value="150"></div>
+      <div class="formular-feld"><label for="gt-faktor">Garfaktor (gegart = roh × Faktor)</label><input type="text" inputmode="decimal" id="gt-faktor" value="0,77"></div>
+      <div class="rechner-ergebnis">
+        <div class="rechner-ergebnis-titel">Für Deine Portion</div>
+        <div class="rechner-ergebnis-gross" id="gt-ergebnis-kcal">— kcal</div>
+        <div class="rechner-ergebnis-sub" id="gt-ergebnis-sub"></div>
+        <div class="rechner-detail">
+          <div class="rechner-nrow"><span class="l">Rohe Menge</span><span id="gt-detail-roh">—</span></div>
+          <div class="rechner-nrow"><span class="l">Eiweiß</span><span id="gt-detail-eiweiss">—</span></div>
+          <div class="rechner-nrow"><span class="l">Fett</span><span id="gt-detail-fett">—</span></div>
+        </div>
+      </div>
+      <button type="button" id="gt-anzeigen" class="knopf-voll-primaer">Werte anzeigen zum Übernehmen</button>
+      <div class="formular-hinweis" id="gt-hinweis"></div>
+      <div class="md-hint-text">Reiner Rechner — die Erfassung machst Du normal über die Aufschreibung mit der errechneten rohen Menge.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       POPUP: Lebensmittel-Auswahl (Rezept-Zutaten / Garfaktor)
+       ============================================================ -->
+  <div id="popup-lm-picker" class="popup-overlay versteckt" role="dialog" aria-modal="true">
+    <div class="popup-karte popup-karte-gross">
+      <div id="lm-picker-suchbereich">
+        <div class="popup-titel">Lebensmittel wählen</div>
+        <div class="suchfeld-container" style="padding-left:0;padding-right:0;background:transparent">
+          <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="left:10px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="lm-picker-suche" class="suchfeld" placeholder="Suchen …" autocomplete="off">
+        </div>
+        <div id="lm-picker-treffer" class="picker-liste"></div>
+      </div>
+      <div id="lm-picker-menge-box" class="versteckt">
+        <div class="popup-titel">Menge</div>
+        <div class="popup-text">Wie viel <span id="lm-picker-menge-name" class="fett"></span> in Gramm?</div>
+        <div class="formular-feld"><label for="lm-picker-menge">Menge in Gramm</label><input type="text" inputmode="decimal" id="lm-picker-menge"></div>
+        <button type="button" id="lm-picker-hinzufuegen" class="knopf-voll-primaer">Hinzufügen</button>
+      </div>
+      <button type="button" id="lm-picker-abbrechen" class="knopf-voll-ghost">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       POPUP: Eigengericht-Auswahl (Rezept laden)
+       ============================================================ -->
+  <div id="popup-eg-picker" class="popup-overlay versteckt" role="dialog" aria-modal="true">
+    <div class="popup-karte popup-karte-gross">
+      <div class="popup-titel">Rezept laden</div>
+      <div class="suchfeld-container" style="padding-left:0;padding-right:0;background:transparent">
+        <svg class="suchfeld-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="left:10px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="eg-picker-suche" class="suchfeld" placeholder="Gericht suchen …" autocomplete="off">
+      </div>
+      <div id="eg-picker-treffer" class="picker-liste"></div>
+      <button type="button" id="eg-picker-abbrechen" class="knopf-voll-ghost">Abbrechen</button>
     </div>
   </div>
 

@@ -94,6 +94,16 @@ const STANDARD_ZEITREGELN = {
   abends_ab:     '18:00',
 };
 
+/* Fachliche Konstanten fuer die Werkzeuge (Phase D), falls die
+   05_Konfiguration.json sie nicht liefert. */
+const STANDARD_ALKOHOL_KCAL_PRO_G = 7.1;   /* kcal je Gramm reiner Alkohol */
+const STANDARD_ALKOHOL_DICHTE     = 0.8;   /* g/ml — Dichte von Ethanol */
+const STANDARD_GARFAKTOR          = 0.77;  /* gegart = roh × Garfaktor */
+
+/* Fallback-Listen fuer die Auswahl-Dropdowns beim Anlegen. */
+const STANDARD_GERICHT_KATEGORIEN = ['Hauptgericht', 'Suppe', 'Beilage', 'Soße & Dip', 'Dessert & Backwerk', 'Sonstiges'];
+const STANDARD_LEBENSMITTEL_GRUPPEN = ['Getränke', 'Obst', 'Gemüse', 'Fleisch & Wurst', 'Fisch', 'Milchprodukte', 'Brot & Backwaren', 'Süßwaren', 'Fertiggerichte', 'Sonstiges'];
+
 /* ----------------------------------------------------------------
    2. INDEXEDDB-HILFSFUNKTIONEN
 
@@ -880,12 +890,38 @@ function mengeFormatieren(wert) {
  * @param {number} endgewichtG - Endgewicht des Gerichts in Gramm
  * @returns {Object} - Objekt mit kcal, eiweiss, kh, fett, salz (pro 100g) und anzahlUnbekannt
  */
+/* Die Naehrwerte eines Eigengerichts: fuer jeden Wert die Quell-Spalte
+   im Lebensmittel, das Ziel-Feld im Gericht-Cache und die Rundung.
+   Phase D: voller Satz (11 Werte, Restmasse mit dabei) statt nur 5 —
+   damit Eigengerichte fuer Auswertungen denselben Umfang wie die
+   Lebensmittel fuehren. Rundung: kcal ganzzahlig, Salz 2 Nachkomma-
+   stellen, alle uebrigen 1 (konsistent zur Datenmigration). */
+const GERICHT_NAEHRWERT_FELDER = [
+  { quelle: 'kcal_pro_100g',       ziel: 'kcal_pro_100g',              stellen: 0 },
+  { quelle: 'eiweiss_g',           ziel: 'eiweiss_pro_100g',           stellen: 1 },
+  { quelle: 'kohlenhydrate_g',     ziel: 'kh_pro_100g',                stellen: 1 },
+  { quelle: 'zucker_g',            ziel: 'zucker_pro_100g',            stellen: 1 },
+  { quelle: 'fett_g',              ziel: 'fett_pro_100g',              stellen: 1 },
+  { quelle: 'fett_gesaettigt_g',   ziel: 'fett_gesaettigt_pro_100g',   stellen: 1 },
+  { quelle: 'fett_ungesaettigt_g', ziel: 'fett_ungesaettigt_pro_100g', stellen: 1 },
+  { quelle: 'salz_g',              ziel: 'salz_pro_100g',              stellen: 2 },
+  { quelle: 'ballaststoffe_g',     ziel: 'ballaststoffe_pro_100g',     stellen: 1 },
+  { quelle: 'restmasse_g',         ziel: 'restmasse_pro_100g',         stellen: 1 },
+  { quelle: 'alkohol_g',           ziel: 'alkohol_pro_100g',           stellen: 1 },
+];
+
+/**
+ * Berechnet die Naehrwerte eines Eigengerichts (voller Satz, pro 100 g)
+ * aus seinen Zutaten, bezogen auf das Endgewicht.
+ * @param {Array} zutaten - Zutat-Objekte aus IndexedDB
+ * @param {Map} lebensmittelMap - lebensmittel_id → Lebensmittel-Objekt
+ * @param {number} endgewichtG - Endgewicht des Gerichts in Gramm
+ * @returns {Object} - pro-100g-Werte (Ziel-Feldnamen) + anzahl_unbekannt
+ */
 function gerichtNaehrwerteBerechnen(zutaten, lebensmittelMap, endgewichtG) {
-  let gesamtKcal     = 0;
-  let gesamtEiweiss  = 0;
-  let gesamtKh       = 0;
-  let gesamtFett     = 0;
-  let gesamtSalz     = 0;
+  /* Summen je Naehrwert (ungewichtet auf die Gesamt-Rohmasse bezogen) */
+  const summen = {};
+  for (const feld of GERICHT_NAEHRWERT_FELDER) summen[feld.quelle] = 0;
   let anzahlUnbekannt = 0;
 
   for (const zutat of zutaten) {
@@ -898,24 +934,37 @@ function gerichtNaehrwerteBerechnen(zutaten, lebensmittelMap, endgewichtG) {
     }
 
     const faktor = mengeG / 100;
-    gesamtKcal    += faktor * deutscheZahlParsen(lm.kcal_pro_100g);
-    gesamtEiweiss += faktor * deutscheZahlParsen(lm.eiweiss_g);
-    gesamtKh      += faktor * deutscheZahlParsen(lm.kohlenhydrate_g);
-    gesamtFett    += faktor * deutscheZahlParsen(lm.fett_g);
-    gesamtSalz    += faktor * deutscheZahlParsen(lm.salz_g);
+    for (const feld of GERICHT_NAEHRWERT_FELDER) {
+      summen[feld.quelle] += faktor * deutscheZahlParsen(lm[feld.quelle]);
+    }
   }
 
   const endgewicht = endgewichtG > 0 ? endgewichtG : 1;
   const faktor100g = 100 / endgewicht;
 
-  return {
-    kcal_pro_100g:     Math.round(gesamtKcal * faktor100g),
-    eiweiss_pro_100g:  parseFloat((gesamtEiweiss * faktor100g).toFixed(1)),
-    kh_pro_100g:       parseFloat((gesamtKh * faktor100g).toFixed(1)),
-    fett_pro_100g:     parseFloat((gesamtFett * faktor100g).toFixed(1)),
-    salz_pro_100g:     parseFloat((gesamtSalz * faktor100g).toFixed(2)),
-    anzahl_unbekannt:  anzahlUnbekannt,
-  };
+  const ergebnis = { anzahl_unbekannt: anzahlUnbekannt };
+  for (const feld of GERICHT_NAEHRWERT_FELDER) {
+    const wert = summen[feld.quelle] * faktor100g;
+    ergebnis[feld.ziel] = (feld.stellen === 0)
+      ? Math.round(wert)
+      : parseFloat(wert.toFixed(feld.stellen));
+  }
+  return ergebnis;
+}
+
+/**
+ * Uebertraegt ein Berechnungs-Ergebnis in die gecachten Felder eines
+ * Gericht-Objekts (inkl. kcal_pro_100g_berechnet und der Unvollstaendig-
+ * keits-Markierung). Genutzt von Import und Rezeptrechner.
+ */
+function gerichtNaehrwerteZuweisen(gericht, berechnete) {
+  gericht.kcal_pro_100g_berechnet = berechnete.kcal_pro_100g;
+  for (const feld of GERICHT_NAEHRWERT_FELDER) {
+    if (feld.ziel === 'kcal_pro_100g') continue;   /* kcal steht als _berechnet */
+    gericht[feld.ziel] = berechnete[feld.ziel];
+  }
+  gericht.kcal_unvollstaendig       = berechnete.anzahl_unbekannt > 0;
+  gericht.anzahl_unbekannte_zutaten = berechnete.anzahl_unbekannt;
 }
 
 /**
@@ -1035,13 +1084,7 @@ async function allesDatenImportieren(fortschrittCallback) {
     const endgewicht = deutscheZahlParsen(gericht.gericht_endgewicht_g);
     const berechnete = gerichtNaehrwerteBerechnen(zutatenDesGerichts, lebensmittelMap, endgewicht);
 
-    gericht.kcal_pro_100g_berechnet  = berechnete.kcal_pro_100g;
-    gericht.eiweiss_pro_100g         = berechnete.eiweiss_pro_100g;
-    gericht.kh_pro_100g              = berechnete.kh_pro_100g;
-    gericht.fett_pro_100g            = berechnete.fett_pro_100g;
-    gericht.salz_pro_100g            = berechnete.salz_pro_100g;
-    gericht.kcal_unvollstaendig      = berechnete.anzahl_unbekannt > 0;
-    gericht.anzahl_unbekannte_zutaten = berechnete.anzahl_unbekannt;
+    gerichtNaehrwerteZuweisen(gericht, berechnete);
     /* Lokal eingegebene Einheiten-Werte bewahren (Vorrang vor CSV). */
     const bewahrt = egEinheitenAlt.get(gerichtId);
     if (bewahrt) Object.assign(gericht, bewahrt);
@@ -1180,6 +1223,9 @@ async function konfigurationHolen() {
   const eintrag = await dbLesen('konfiguration', 'config');
   const roh = (eintrag && eintrag.daten) ? eintrag.daten : {};
   const zeit = roh.mahlzeit_zeitregeln || {};
+  const alkoholK   = roh.alkohol_konstanten || {};
+  const kalorienK  = roh.kalorien_konstanten || {};
+  const bruehepK   = roh.bruehepulver_konstanten || {};
   konfigCache = {
     tagesziel_kcal:   Math.round(zahlAusKonfig(roh.tagesziel_kcal, STANDARD_TAGESZIEL_KCAL)),
     kcal_gruen_bis:   Math.round(zahlAusKonfig(roh.kcal_gruen_bis, STANDARD_KCAL_GRUEN_BIS)),
@@ -1188,6 +1234,14 @@ async function konfigurationHolen() {
     mittags_start:    zeit.mittags_start || STANDARD_ZEITREGELN.mittags_start,
     mittags_bis:      zeit.mittags_bis   || STANDARD_ZEITREGELN.mittags_bis,
     abends_ab:        zeit.abends_ab     || STANDARD_ZEITREGELN.abends_ab,
+    /* Werkzeug-Konstanten (Phase D) */
+    alkohol_kcal_pro_g: zahlAusKonfig(kalorienK.alkohol, STANDARD_ALKOHOL_KCAL_PRO_G),
+    alkohol_dichte:     zahlAusKonfig(alkoholK.dichte_g_pro_ml, STANDARD_ALKOHOL_DICHTE),
+    garfaktor_default:  zahlAusKonfig(bruehepK.garfaktor_default, STANDARD_GARFAKTOR),
+    gericht_kategorien:   Array.isArray(roh.gericht_kategorien) && roh.gericht_kategorien.length
+      ? roh.gericht_kategorien : STANDARD_GERICHT_KATEGORIEN,
+    lebensmittel_gruppen: Array.isArray(roh.lebensmittel_gruppen) && roh.lebensmittel_gruppen.length
+      ? roh.lebensmittel_gruppen : STANDARD_LEBENSMITTEL_GRUPPEN,
   };
   return konfigCache;
 }
@@ -1276,6 +1330,13 @@ const ANSICHT_ZU_TAB = {
   'ansicht-lebensmittel-detail':'datenbank',
   'ansicht-gericht-detail':     'datenbank',
   'ansicht-einstellungen':      'mehr',
+  /* Werkzeuge (Phase D) — allesamt unter dem Mehr-Tab */
+  'ansicht-werkzeuge':               'mehr',
+  'ansicht-werkzeug-rezept':         'mehr',
+  'ansicht-werkzeug-alkohol':        'mehr',
+  'ansicht-werkzeug-bruehe':         'mehr',
+  'ansicht-werkzeug-garfaktor-db':   'mehr',
+  'ansicht-werkzeug-garfaktor-tag':  'mehr',
 };
 
 /* Bildschirme, bei denen die untere Tab-Leiste sichtbar ist. */
@@ -1410,6 +1471,14 @@ async function routeVerarbeiten() {
     case 'einstellungen':
       ansichtAnzeigen('ansicht-einstellungen');
       await einstellungenLaden();
+      break;
+    case 'werkzeuge':
+      ansichtAnzeigen('ansicht-werkzeuge');
+      break;
+    case 'werkzeug':
+      /* Ein bestimmter Rechner; parameter = rezept|alkohol|bruehe|
+         garfaktor-db|garfaktor-tag */
+      await werkzeugOeffnen(parameter);
       break;
     case 'lebensmittel-detail':
       if (parameter) {
@@ -1809,11 +1878,17 @@ async function gerichtDetailLaden(gerichtId) {
   const zutaten = await dbIndexLesen('zutaten', 'nach_gericht_id', gerichtId);
   zutaten.sort((a, b) => parseInt(a.zutat_nr) - parseInt(b.zutat_nr));
 
-  const kcal     = gericht.kcal_pro_100g_berechnet || 0;
-  const eiweiss  = gericht.eiweiss_pro_100g || 0;
-  const kh       = gericht.kh_pro_100g || 0;
-  const fett     = gericht.fett_pro_100g || 0;
-  const salz     = gericht.salz_pro_100g || 0;
+  const kcal         = gericht.kcal_pro_100g_berechnet || 0;
+  const eiweiss      = gericht.eiweiss_pro_100g || 0;
+  const kh           = gericht.kh_pro_100g || 0;
+  const zucker       = gericht.zucker_pro_100g || 0;
+  const fett         = gericht.fett_pro_100g || 0;
+  const fettGes      = gericht.fett_gesaettigt_pro_100g || 0;
+  const fettUnges    = gericht.fett_ungesaettigt_pro_100g || 0;
+  const salz         = gericht.salz_pro_100g || 0;
+  const ballaststoffe= gericht.ballaststoffe_pro_100g || 0;
+  const restmasse    = gericht.restmasse_pro_100g || 0;
+  const alkohol      = gericht.alkohol_pro_100g || 0;
   const endgewicht = deutscheZahlParsen(gericht.gericht_endgewicht_g);
 
   const kcalAnzeige = gericht.kcal_unvollstaendig ? `${kcal}*` : `${kcal}`;
@@ -1845,14 +1920,49 @@ async function gerichtDetailLaden(gerichtId) {
           <span class="naehrwert-label">Kohlenhydrate</span>
           <span class="naehrwert-wert">${zahlDe(kh, 1)} g</span>
         </div>
+        <div class="naehrwert-reihe eingerueckt">
+          <span class="naehrwert-label">davon Zucker</span>
+          <span class="naehrwert-wert">${zahlDe(zucker, 1)} g</span>
+        </div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Fett</span>
           <span class="naehrwert-wert">${zahlDe(fett, 1)} g</span>
         </div>
+        <div class="naehrwert-reihe eingerueckt">
+          <span class="naehrwert-label">davon gesättigt</span>
+          <span class="naehrwert-wert">${zahlDe(fettGes, 1)} g</span>
+        </div>
+        <div class="naehrwert-reihe eingerueckt">
+          <span class="naehrwert-label">davon ungesättigt</span>
+          <span class="naehrwert-wert">${zahlDe(fettUnges, 1)} g</span>
+        </div>
+      </div>
+
+      <div class="detail-sektion">
+        <div class="detail-sektion-titel">Weitere Werte (pro 100 g)</div>
         <div class="naehrwert-reihe">
           <span class="naehrwert-label">Salz</span>
           <span class="naehrwert-wert">${zahlDe(salz, 2)} g</span>
         </div>
+        <div class="naehrwert-reihe">
+          <span class="naehrwert-label">Ballaststoffe</span>
+          <span class="naehrwert-wert">${zahlDe(ballaststoffe, 1)} g</span>
+        </div>`;
+
+  if (restmasse > 0) {
+    html += `<div class="naehrwert-reihe">
+          <span class="naehrwert-label">Restmasse</span>
+          <span class="naehrwert-wert">${zahlDe(restmasse, 1)} g</span>
+        </div>`;
+  }
+  if (alkohol > 0) {
+    html += `<div class="naehrwert-reihe">
+          <span class="naehrwert-label">Alkohol</span>
+          <span class="naehrwert-wert">${zahlDe(alkohol, 1)} g</span>
+        </div>`;
+  }
+
+  html += `
       </div>
 
       <div class="detail-sektion">
@@ -3147,6 +3257,649 @@ function syncStatusAnzeigen() {
   if (klasse) el.classList.add(klasse);
 }
 
+/* ================================================================
+   7d. WERKZEUGE (Phase D) — fuenf Rechner
+
+   Ein Bereich "Werkzeuge" im Mehr-Tab mit fuenf Rechnern. Sie helfen
+   beim Anlegen von Lebensmitteln/Eigengerichten und bei der Mengen-
+   Umrechnung. DB-Schreibvorgaenge setzen geaendert_am + sync_status,
+   damit der Phase-F-Sync sie automatisch hochlaedt (die Rechner rufen
+   den Sync nicht selbst auf — sie stossen nur den ueblichen Debounce an).
+   ================================================================ */
+
+/* Rundung je Naehrwert-Feld beim Anlegen eines neuen Lebensmittels:
+   kcal ganzzahlig, Salz 2 Nachkommastellen, alle uebrigen 1. */
+const LEBENSMITTEL_NAEHRWERT_STELLEN = {
+  kcal_pro_100g: 0, eiweiss_g: 1, kohlenhydrate_g: 1, zucker_g: 1, fett_g: 1,
+  fett_gesaettigt_g: 1, fett_ungesaettigt_g: 1, salz_g: 2, ballaststoffe_g: 1,
+  restmasse_g: 1, alkohol_g: 1,
+};
+
+/**
+ * Formatiert eine Zahl als deutsche Zeichenkette mit fester Nachkomma-
+ * Stellenzahl (0 → ganzzahlig). Fuer die Speicherung in der DB/CSV.
+ */
+function zahlNachDeutsch(wert, stellen) {
+  const n = Number(wert) || 0;
+  return (stellen === 0) ? String(Math.round(n)) : n.toFixed(stellen).replace('.', ',');
+}
+
+/**
+ * Erzeugt eine eindeutige neue Lebensmittel-ID (LM_<ms>_<hex>).
+ */
+function lebensmittelIdErzeugen() {
+  const zufall = crypto.getRandomValues(new Uint8Array(3));
+  const suffix = Array.from(zufall).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `LM_${Date.now()}_${suffix}`;
+}
+
+/**
+ * Erzeugt eine eindeutige neue Gericht-ID (EG_<ms>_<hex>).
+ */
+function gerichtIdErzeugen() {
+  const zufall = crypto.getRandomValues(new Uint8Array(3));
+  const suffix = Array.from(zufall).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `EG_${Date.now()}_${suffix}`;
+}
+
+/**
+ * Legt ein NEUES Lebensmittel in IndexedDB an (mit Sync-Feldern, damit
+ * der Phase-F-Sync es hochlaedt). Nicht angegebene Naehrwerte → 0.
+ * @param {Object} p - { name, gruppe, bemerkung, werte: {feld: zahl} }
+ * @returns {Promise<Object>} - das gespeicherte Lebensmittel
+ */
+async function neuesLebensmittelSpeichern({ name, gruppe, bemerkung, werte }) {
+  const lm = {
+    lebensmittel_id: lebensmittelIdErzeugen(),
+    name: (name || '').trim(),
+    bemerkung: bemerkung || '',
+    gruppe: gruppe || 'Sonstiges',
+    gramm_pro_stueck: '', gramm_pro_portion: '', gramm_pro_scheibe: '',
+    gramm_pro_essloeffel: '', gramm_pro_teeloeffel: '',
+    geaendert_am: jetztZeitstempel(),
+    sync_status: 'neu',
+  };
+  for (const [feld, stellen] of Object.entries(LEBENSMITTEL_NAEHRWERT_STELLEN)) {
+    lm[feld] = zahlNachDeutsch((werte && werte[feld]) || 0, stellen);
+  }
+  await dbSchreiben('lebensmittel', lm);
+  lebensmittelCache = null;   /* Liste/Suche neu laden lassen */
+  return lm;
+}
+
+/**
+ * Legt ein NEUES Eigengericht (mit Zutaten) in IndexedDB an. Die
+ * Naehrwerte werden aus den Zutaten aufs Endgewicht bezogen berechnet
+ * und gecacht (voller Satz). Mit Sync-Feldern.
+ * @param {Object} p - { name, kategorie, endgewichtG, zutaten:
+ *   [{lebensmittel_id, name, menge_g}], lebensmittelMap }
+ * @returns {Promise<Object>} - das gespeicherte Gericht
+ */
+async function neuesEigengerichtSpeichern({ name, kategorie, endgewichtG, zutaten, lebensmittelMap }) {
+  const gerichtId = gerichtIdErzeugen();
+
+  /* Zutaten als denormalisierte Zeilen (zutat_nr fortlaufend ab 1) */
+  const zutatenSaetze = zutaten.map((z, index) => ({
+    gericht_id: gerichtId,
+    zutat_nr: String(index + 1),
+    zutat_lebensmittel_id: z.lebensmittel_id,
+    zutat_lebensmittel_name_original: z.name,
+    zutat_menge_g: mengeFormatieren(z.menge_g),
+  }));
+
+  /* Naehrwerte aufs Endgewicht bezogen berechnen (voller Satz) */
+  const berechnete = gerichtNaehrwerteBerechnen(zutatenSaetze, lebensmittelMap, endgewichtG);
+
+  const gericht = {
+    gericht_id: gerichtId,
+    gericht_name: (name || '').trim(),
+    gericht_kategorie: kategorie || 'Sonstiges',
+    gericht_original_kategorie: kategorie || 'Sonstiges',
+    gericht_endgewicht_g: mengeFormatieren(endgewichtG),
+    gramm_pro_stueck: '', gramm_pro_portion: '', gramm_pro_scheibe: '',
+    gramm_pro_essloeffel: '', gramm_pro_teeloeffel: '',
+    geaendert_am: jetztZeitstempel(),
+    sync_status: 'neu',
+  };
+  gerichtNaehrwerteZuweisen(gericht, berechnete);
+
+  await dbSchreiben('eigengerichte', gericht);
+  await dbMassenSchreiben('zutaten', zutatenSaetze);
+  gerichteCache = null;
+  return gericht;
+}
+
+/**
+ * Fuellt ein <select> mit Optionen.
+ */
+function optionenFuellen(selectEl, werte, ausgewaehlt) {
+  selectEl.innerHTML = werte
+    .map(w => `<option value="${escapeHtml(w)}"${w === ausgewaehlt ? ' selected' : ''}>${escapeHtml(w)}</option>`)
+    .join('');
+}
+
+/* -- Lebensmittel-Auswahl (Popup, wiederverwendbar) ------------- */
+
+let lmPickerCallback = null;   /* Rueckruf mit (lebensmittel[, menge]) */
+let lmPickerMitMenge = false;  /* zweiter Schritt (Menge abfragen)? */
+let lmPickerGewaehlt = null;   /* im Menge-Schritt gemerktes Lebensmittel */
+
+/**
+ * Oeffnet die Lebensmittel-Auswahl. Ruft callback(lm) bzw. — mit
+ * mitMenge=true — callback(lm, mengeG) auf.
+ */
+async function lebensmittelWaehlen(callback, mitMenge) {
+  lmPickerCallback = callback;
+  lmPickerMitMenge = !!mitMenge;
+  lmPickerGewaehlt = null;
+  if (!lebensmittelCache) lebensmittelCache = await dbAllesLesen('lebensmittel');
+  document.getElementById('lm-picker-suche').value = '';
+  document.getElementById('lm-picker-menge-box').classList.add('versteckt');
+  document.getElementById('lm-picker-suchbereich').classList.remove('versteckt');
+  lmPickerTrefferRendern();
+  document.getElementById('popup-lm-picker').classList.remove('versteckt');
+  document.getElementById('lm-picker-suche').focus();
+}
+
+function lmPickerTrefferRendern() {
+  const suche = document.getElementById('lm-picker-suche').value.toLowerCase();
+  const listeEl = document.getElementById('lm-picker-treffer');
+  const treffer = (lebensmittelCache || [])
+    .filter(lm => lm.name.toLowerCase().includes(suche) ||
+      (lm.bemerkung && lm.bemerkung.toLowerCase().includes(suche)))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 100);
+
+  if (treffer.length === 0) {
+    listeEl.innerHTML = '<div class="leerer-zustand">Nicht gefunden? Lege das Lebensmittel erst in der Datenbank an.</div>';
+    return;
+  }
+  listeEl.innerHTML = treffer.map(lm => {
+    const kcal = Math.round(deutscheZahlParsen(lm.kcal_pro_100g));
+    return `<div class="listen-eintrag" data-id="${escapeHtml(lm.lebensmittel_id)}" tabindex="0"><span class="listen-eintrag-name">${escapeHtml(lm.name)}</span><span class="listen-eintrag-wert">${kcal} kcal</span></div>`;
+  }).join('');
+  listeEl.querySelectorAll('.listen-eintrag').forEach(el => {
+    el.addEventListener('click', () => lmPickerTrefferGewaehlt(el.dataset.id));
+  });
+}
+
+async function lmPickerTrefferGewaehlt(lmId) {
+  const lm = (lebensmittelCache || []).find(x => x.lebensmittel_id === lmId);
+  if (!lm) return;
+  if (lmPickerMitMenge) {
+    /* Zweiter Schritt: Menge abfragen */
+    lmPickerGewaehlt = lm;
+    document.getElementById('lm-picker-suchbereich').classList.add('versteckt');
+    document.getElementById('lm-picker-menge-box').classList.remove('versteckt');
+    document.getElementById('lm-picker-menge-name').textContent = lm.name;
+    const mengeEl = document.getElementById('lm-picker-menge');
+    mengeEl.value = '';
+    mengeEl.focus();
+  } else {
+    const cb = lmPickerCallback;
+    lmPickerSchliessen();
+    if (cb) cb(lm);
+  }
+}
+
+function lmPickerMengeBestaetigen() {
+  const menge = deutscheZahlParsen(document.getElementById('lm-picker-menge').value);
+  if (menge <= 0) { fehlermeldungAnzeigen('Bitte eine Menge größer als 0 eingeben.'); return; }
+  const lm = lmPickerGewaehlt;
+  const cb = lmPickerCallback;
+  lmPickerSchliessen();
+  if (cb) cb(lm, menge);
+}
+
+function lmPickerSchliessen() {
+  document.getElementById('popup-lm-picker').classList.add('versteckt');
+  lmPickerCallback = null;
+  lmPickerGewaehlt = null;
+}
+
+/* -- Rechner 2: Alkohol ----------------------------------------- */
+
+async function alkoholRechnerLaden() {
+  const konfig = await konfigurationHolen();
+  optionenFuellen(document.getElementById('alk-gruppe'), konfig.lebensmittel_gruppen, 'Getränke');
+  document.getElementById('alk-hinweis').textContent = '';
+  alkoholBerechnen();
+}
+
+/**
+ * Berechnet kcal + Alkohol-Gramm pro 100 g. Gibt das Ergebnis-Objekt
+ * zurueck (oder null bei ungueltiger Eingabe).
+ */
+async function alkoholBerechnen() {
+  const konfig = await konfigurationHolen();
+  const menge   = deutscheZahlParsen(document.getElementById('alk-menge').value);
+  const einheit = document.getElementById('alk-einheit').value;
+  const vol     = deutscheZahlParsen(document.getElementById('alk-vol').value);
+  const zusatz  = deutscheZahlParsen(document.getElementById('alk-zusatz').value);
+
+  const mengeMl = (einheit === 'Liter') ? menge * 1000 : menge;
+  const grossEl = document.getElementById('alk-ergebnis-kcal');
+  const subEl   = document.getElementById('alk-ergebnis-sub');
+
+  if (mengeMl <= 0 || vol < 0) {
+    grossEl.textContent = '— kcal';
+    subEl.textContent = '';
+    document.getElementById('alk-detail-alkohol').textContent = '—';
+    document.getElementById('alk-detail-kcalalk').textContent = '—';
+    return null;
+  }
+
+  const reinerAlkoholG   = mengeMl * (vol / 100) * konfig.alkohol_dichte;
+  const kcalAusAlkohol   = reinerAlkoholG * konfig.alkohol_kcal_pro_g;
+  const alkoholGPro100g  = (reinerAlkoholG / mengeMl) * 100;
+  const kcalPro100g      = Math.round(alkoholGPro100g * konfig.alkohol_kcal_pro_g + zusatz);
+
+  grossEl.textContent = `${kcalPro100g} kcal`;
+  subEl.textContent   = `${zahlDe(alkoholGPro100g, 1)} g reiner Alkohol pro 100 g`;
+  document.getElementById('alk-detail-alkohol').textContent = `${zahlDe(reinerAlkoholG, 1)} g`;
+  document.getElementById('alk-detail-kcalalk').textContent = `${Math.round(kcalAusAlkohol)} kcal`;
+  document.getElementById('alk-detail-dichte').textContent  = `${zahlDe(konfig.alkohol_dichte, 1)} g/ml`;
+
+  return { kcal_pro_100g: kcalPro100g, alkohol_g: alkoholGPro100g };
+}
+
+async function alkoholSpeichern() {
+  const ergebnis = await alkoholBerechnen();
+  const name = document.getElementById('alk-name').value.trim();
+  if (!ergebnis) { fehlermeldungAnzeigen('Bitte gültige Werte eingeben.'); return; }
+  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
+  const gruppe = document.getElementById('alk-gruppe').value;
+  await neuesLebensmittelSpeichern({
+    name, gruppe,
+    werte: { kcal_pro_100g: ergebnis.kcal_pro_100g, alkohol_g: ergebnis.alkohol_g },
+  });
+  syncAnstossenNachErfassung();
+  werkzeugGespeichertHinweis('alk-hinweis', name);
+}
+
+/* -- Rechner 3: Bruehepulver ------------------------------------ */
+
+async function bruehepulverRechnerLaden() {
+  const konfig = await konfigurationHolen();
+  optionenFuellen(document.getElementById('br-gruppe'), konfig.lebensmittel_gruppen, 'Sonstiges');
+  document.getElementById('br-hinweis').textContent = '';
+  bruehepulverBerechnen();
+}
+
+function bruehepulverBerechnen() {
+  const gesamtMl   = deutscheZahlParsen(document.getElementById('br-gesamt').value);
+  const trockenG   = deutscheZahlParsen(document.getElementById('br-trocken').value);
+  const bezugKcal  = deutscheZahlParsen(document.getElementById('br-kcal').value);
+  const bezugMl    = deutscheZahlParsen(document.getElementById('br-bezug').value);
+
+  const grossEl = document.getElementById('br-ergebnis-kcal');
+  if (gesamtMl <= 0 || trockenG <= 0 || bezugMl <= 0) {
+    grossEl.textContent = '— kcal';
+    document.getElementById('br-detail-gesamt').textContent = '—';
+    document.getElementById('br-detail-portionen').textContent = '—';
+    return null;
+  }
+  const portionen   = gesamtMl / bezugMl;
+  const gesamtKcal  = portionen * bezugKcal;
+  const kcalPro100g = Math.round((gesamtKcal / trockenG) * 100);
+
+  grossEl.textContent = `${kcalPro100g} kcal`;
+  document.getElementById('br-detail-gesamt').textContent = `${Math.round(gesamtKcal)} kcal`;
+  document.getElementById('br-detail-portionen').textContent = zahlDe(portionen, 0).replace(',0', '');
+  return { kcal_pro_100g: kcalPro100g };
+}
+
+async function bruehepulverSpeichern() {
+  const ergebnis = bruehepulverBerechnen();
+  const name = document.getElementById('br-name').value.trim();
+  if (!ergebnis) { fehlermeldungAnzeigen('Bitte gültige Werte eingeben.'); return; }
+  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
+  const gruppe = document.getElementById('br-gruppe').value;
+  await neuesLebensmittelSpeichern({ name, gruppe, werte: { kcal_pro_100g: ergebnis.kcal_pro_100g } });
+  syncAnstossenNachErfassung();
+  werkzeugGespeichertHinweis('br-hinweis', name);
+}
+
+/* -- Rechner 4: Garfaktor Quelle → Datenbank -------------------- */
+
+async function garfaktorDbRechnerLaden() {
+  const konfig = await konfigurationHolen();
+  optionenFuellen(document.getElementById('gd-gruppe'), konfig.lebensmittel_gruppen, 'Fleisch & Wurst');
+  document.getElementById('gd-faktor').value = zahlDe(konfig.garfaktor_default, 2);
+  document.getElementById('gd-hinweis').textContent = '';
+  garfaktorDbBerechnen();
+}
+
+function garfaktorDbBerechnen() {
+  const kcal    = deutscheZahlParsen(document.getElementById('gd-kcal').value);
+  const eiweiss = deutscheZahlParsen(document.getElementById('gd-eiweiss').value);
+  const fett    = deutscheZahlParsen(document.getElementById('gd-fett').value);
+  const salz    = deutscheZahlParsen(document.getElementById('gd-salz').value);
+  const faktor  = deutscheZahlParsen(document.getElementById('gd-faktor').value) || STANDARD_GARFAKTOR;
+
+  const rohKcal    = Math.round(kcal * faktor);
+  const rohEiweiss = parseFloat((eiweiss * faktor).toFixed(1));
+  const rohFett    = parseFloat((fett * faktor).toFixed(1));
+  const rohSalz    = parseFloat((salz * faktor).toFixed(2));
+
+  document.getElementById('gd-ergebnis-kcal').textContent = `${rohKcal} kcal`;
+  document.getElementById('gd-ergebnis-sub').textContent  = `${zahlDe(kcal, 0).replace(',0','')} × ${zahlDe(faktor, 2)} = ${rohKcal} (Nährwerte verdünnen sich)`;
+  document.getElementById('gd-detail-eiweiss').textContent = `${zahlDe(rohEiweiss, 1)} g`;
+  document.getElementById('gd-detail-fett').textContent    = `${zahlDe(rohFett, 1)} g`;
+  document.getElementById('gd-detail-salz').textContent    = `${zahlDe(rohSalz, 2)} g`;
+
+  return { kcal_pro_100g: rohKcal, eiweiss_g: rohEiweiss, fett_g: rohFett, salz_g: rohSalz };
+}
+
+async function garfaktorDbSpeichern() {
+  const ergebnis = garfaktorDbBerechnen();
+  const name = document.getElementById('gd-name').value.trim();
+  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
+  const gruppe = document.getElementById('gd-gruppe').value;
+  await neuesLebensmittelSpeichern({ name, gruppe, werte: ergebnis });
+  syncAnstossenNachErfassung();
+  werkzeugGespeichertHinweis('gd-hinweis', name);
+}
+
+/* -- Rechner 5: Garfaktor fuer die Aufschreibung (nur Anzeige) -- */
+
+let garfaktorTagLm = null;   /* gewaehltes rohes Lebensmittel */
+
+async function garfaktorTagRechnerLaden() {
+  const konfig = await konfigurationHolen();
+  garfaktorTagLm = null;
+  document.getElementById('gt-lm-anzeige').textContent = 'Kein Lebensmittel gewählt';
+  document.getElementById('gt-faktor').value = zahlDe(konfig.garfaktor_default, 2);
+  document.getElementById('gt-gegart').value = '';
+  document.getElementById('gt-hinweis').textContent = '';
+  garfaktorTagBerechnen();
+}
+
+function garfaktorTagBerechnen() {
+  const grossEl = document.getElementById('gt-ergebnis-kcal');
+  const subEl   = document.getElementById('gt-ergebnis-sub');
+  if (!garfaktorTagLm) {
+    grossEl.textContent = '— kcal';
+    subEl.textContent = 'Erst ein Lebensmittel wählen';
+    document.getElementById('gt-detail-roh').textContent = '—';
+    document.getElementById('gt-detail-eiweiss').textContent = '—';
+    document.getElementById('gt-detail-fett').textContent = '—';
+    document.getElementById('gt-hinweis').textContent = '';
+    return;
+  }
+  const gegart = deutscheZahlParsen(document.getElementById('gt-gegart').value);
+  const faktor = deutscheZahlParsen(document.getElementById('gt-faktor').value) || STANDARD_GARFAKTOR;
+  if (gegart <= 0 || faktor <= 0) {
+    grossEl.textContent = '— kcal';
+    subEl.textContent = 'Gegartes Gewicht eingeben';
+    return;
+  }
+  /* Rohe Menge auf ganze Gramm runden und mit diesem Wert weiterrechnen
+     (so passen Anzeige und Naehrwerte exakt zusammen). */
+  const roheMengeGerundet = Math.round(gegart / faktor);
+  const faktor100 = roheMengeGerundet / 100;
+  const kcal    = Math.round(faktor100 * deutscheZahlParsen(garfaktorTagLm.kcal_pro_100g));
+  const eiweiss = parseFloat((faktor100 * deutscheZahlParsen(garfaktorTagLm.eiweiss_g)).toFixed(1));
+  const fett    = parseFloat((faktor100 * deutscheZahlParsen(garfaktorTagLm.fett_g)).toFixed(1));
+
+  grossEl.textContent = `${kcal} kcal`;
+  subEl.textContent   = `${zahlDe(gegart, 0).replace(',0','')} g gegart = ${roheMengeGerundet} g roh`;
+  document.getElementById('gt-detail-roh').textContent     = `${roheMengeGerundet} g`;
+  document.getElementById('gt-detail-eiweiss').textContent = `${zahlDe(eiweiss, 1)} g`;
+  document.getElementById('gt-detail-fett').textContent    = `${zahlDe(fett, 1)} g`;
+  document.getElementById('gt-hinweis').textContent =
+    `Trage in der Aufschreibung ${roheMengeGerundet} g „${garfaktorTagLm.name}" ein.`;
+}
+
+/* -- Rechner 1: Rezeptrechner ----------------------------------- */
+
+let rezeptZutaten = [];             /* [{lebensmittel_id, name, menge_g, objekt}] */
+let rezeptEndgewichtManuell = false;
+
+async function rezeptRechnerLaden() {
+  const konfig = await konfigurationHolen();
+  /* Der Zustand (Zutaten, Endgewicht) bleibt ueber Navigation und
+     Picker-Nutzung erhalten und wird nur nach dem Speichern
+     zurueckgesetzt. Kategorie-Dropdown fuellen (aktuelle Auswahl
+     bewahren, falls vorhanden). */
+  const katSel = document.getElementById('rz-kategorie');
+  const vorAuswahl = katSel.value || 'Sonstiges';
+  optionenFuellen(katSel, konfig.gericht_kategorien,
+    konfig.gericht_kategorien.includes(vorAuswahl) ? vorAuswahl : 'Sonstiges');
+  await rezeptAktualisieren();
+}
+
+/**
+ * Neu berechnen und rendern: Zutatenliste, Rohmasse, Endgewicht
+ * (Default = Rohmasse solange nicht manuell), Naehrwerte pro 100 g.
+ */
+async function rezeptAktualisieren() {
+  /* Zutatenliste rendern */
+  const listeEl = document.getElementById('rz-zutaten');
+  if (rezeptZutaten.length === 0) {
+    listeEl.innerHTML = '<div class="rezept-leer">Noch keine Zutaten. Tippe auf „Zutat hinzufügen".</div>';
+  } else {
+    listeEl.innerHTML = rezeptZutaten.map((z, i) =>
+      `<div class="rezept-zutat"><span class="rz-name">${escapeHtml(z.name)}</span><span class="rz-menge">${mengeFormatieren(z.menge_g)} g</span><button class="rz-entfernen" data-i="${i}" aria-label="Entfernen">✕</button></div>`
+    ).join('');
+    listeEl.querySelectorAll('.rz-entfernen').forEach(btn => {
+      btn.addEventListener('click', () => {
+        rezeptZutaten.splice(parseInt(btn.dataset.i), 1);
+        rezeptEndgewichtManuell = false;   /* Endgewicht folgt wieder der Rohmasse */
+        rezeptAktualisieren();
+      });
+    });
+  }
+
+  const rohmasse = rezeptZutaten.reduce((s, z) => s + (Number(z.menge_g) || 0), 0);
+  document.getElementById('rz-rohmasse').value = `${mengeFormatieren(rohmasse)} g`;
+
+  const endgewichtEl = document.getElementById('rz-endgewicht');
+  if (!rezeptEndgewichtManuell) {
+    endgewichtEl.value = rohmasse > 0 ? mengeFormatieren(rohmasse) : '';
+  }
+  const endgewicht = deutscheZahlParsen(endgewichtEl.value);
+
+  /* Naehrwerte pro 100 g (voller Satz, aufs Endgewicht bezogen) */
+  const lmMap = await lebensmittelMapHolen();
+  const zutatenSaetze = rezeptZutaten.map((z, i) => ({
+    gericht_id: 'TEMP', zutat_nr: String(i + 1),
+    zutat_lebensmittel_id: z.lebensmittel_id, zutat_menge_g: String(z.menge_g),
+  }));
+  const b = gerichtNaehrwerteBerechnen(zutatenSaetze, lmMap, endgewicht > 0 ? endgewicht : rohmasse);
+
+  document.getElementById('rz-ergebnis-kcal').textContent = `${b.kcal_pro_100g || 0} kcal`;
+  document.getElementById('rz-ergebnis-sub').textContent  =
+    endgewicht > 0 ? `bezogen auf ${mengeFormatieren(endgewicht)} g Endgewicht` : 'Endgewicht eingeben';
+  document.getElementById('rz-detail-eiweiss').textContent = `${zahlDe(b.eiweiss_pro_100g || 0, 1)} g`;
+  document.getElementById('rz-detail-kh').textContent      = `${zahlDe(b.kh_pro_100g || 0, 1)} g`;
+  document.getElementById('rz-detail-fett').textContent    = `${zahlDe(b.fett_pro_100g || 0, 1)} g`;
+  document.getElementById('rz-detail-salz').textContent    = `${zahlDe(b.salz_pro_100g || 0, 2)} g`;
+}
+
+function rezeptZutatHinzufuegen() {
+  lebensmittelWaehlen((lm, menge) => {
+    rezeptZutaten.push({ lebensmittel_id: lm.lebensmittel_id, name: lm.name, menge_g: menge, objekt: lm });
+    rezeptEndgewichtManuell = false;   /* Endgewicht folgt wieder der Rohmasse */
+    rezeptAktualisieren();
+  }, true);
+}
+
+async function rezeptSpeichern() {
+  const name = document.getElementById('rz-name').value.trim();
+  if (rezeptZutaten.length === 0) { fehlermeldungAnzeigen('Bitte mindestens eine Zutat hinzufügen.'); return; }
+  if (!name) { fehlermeldungAnzeigen('Bitte einen Namen eingeben.'); return; }
+  const endgewicht = deutscheZahlParsen(document.getElementById('rz-endgewicht').value);
+  if (endgewicht <= 0) { fehlermeldungAnzeigen('Bitte ein Endgewicht größer als 0 eingeben.'); return; }
+  const kategorie = document.getElementById('rz-kategorie').value;
+  const lmMap = await lebensmittelMapHolen();
+
+  await neuesEigengerichtSpeichern({
+    name, kategorie, endgewichtG: endgewicht,
+    zutaten: rezeptZutaten.map(z => ({ lebensmittel_id: z.lebensmittel_id, name: z.name, menge_g: z.menge_g })),
+    lebensmittelMap: lmMap,
+  });
+  syncAnstossenNachErfassung();
+
+  /* Zustand zuruecksetzen, Rueckmeldung */
+  rezeptZutaten = [];
+  rezeptEndgewichtManuell = false;
+  document.getElementById('rz-name').value = '';
+  await rezeptAktualisieren();
+  document.getElementById('rz-hinweis').textContent = `Gespeichert als „${name}". Erscheint in der Gerichte-Liste.`;
+}
+
+/**
+ * Laedt ein bestehendes Gericht zum Aendern (Original bleibt). Zutaten +
+ * Endgewicht in den Editor, Name vorbelegt mit "<Name> (Kopie)".
+ */
+async function rezeptBestehendesLaden() {
+  if (!gerichteCache) gerichteCache = await dbAllesLesen('eigengerichte');
+  eigengerichtWaehlen(async (gericht) => {
+    const zutaten = await dbIndexLesen('zutaten', 'nach_gericht_id', gericht.gericht_id);
+    zutaten.sort((a, b) => (parseInt(a.zutat_nr) || 0) - (parseInt(b.zutat_nr) || 0));
+    const lmMap = await lebensmittelMapHolen();
+    rezeptZutaten = zutaten.map(z => {
+      const lm = lmMap.get(z.zutat_lebensmittel_id);
+      return {
+        lebensmittel_id: z.zutat_lebensmittel_id,
+        name: lm ? lm.name : (z.zutat_lebensmittel_name_original || z.zutat_lebensmittel_id),
+        menge_g: deutscheZahlParsen(z.zutat_menge_g),
+        objekt: lm,
+      };
+    });
+    /* Endgewicht des Originals uebernehmen (manuell), Name als Kopie */
+    rezeptEndgewichtManuell = true;
+    document.getElementById('rz-endgewicht').value = mengeFormatieren(deutscheZahlParsen(gericht.gericht_endgewicht_g));
+    document.getElementById('rz-name').value = `${gericht.gericht_name} (Kopie)`;
+    const katSel = document.getElementById('rz-kategorie');
+    if (gericht.gericht_kategorie) katSel.value = gericht.gericht_kategorie;
+    document.getElementById('rz-hinweis').textContent = 'Rezept geladen — Änderung speichert ein NEUES Gericht (Original bleibt).';
+    rezeptAktualisieren();
+  });
+}
+
+/* -- Eigengericht-Auswahl (Popup, fuer "Rezept laden") ---------- */
+
+let egPickerCallback = null;
+
+function eigengerichtWaehlen(callback) {
+  egPickerCallback = callback;
+  document.getElementById('eg-picker-suche').value = '';
+  egPickerTrefferRendern();
+  document.getElementById('popup-eg-picker').classList.remove('versteckt');
+  document.getElementById('eg-picker-suche').focus();
+}
+
+function egPickerTrefferRendern() {
+  const suche = document.getElementById('eg-picker-suche').value.toLowerCase();
+  const listeEl = document.getElementById('eg-picker-treffer');
+  const treffer = (gerichteCache || [])
+    .filter(g => g.gericht_name.toLowerCase().includes(suche))
+    .sort((a, b) => a.gericht_name.localeCompare(b.gericht_name))
+    .slice(0, 100);
+  if (treffer.length === 0) {
+    listeEl.innerHTML = '<div class="leerer-zustand">Keine Gerichte gefunden.</div>';
+    return;
+  }
+  listeEl.innerHTML = treffer.map(g =>
+    `<div class="listen-eintrag" data-id="${escapeHtml(g.gericht_id)}" tabindex="0"><span class="listen-eintrag-name">${escapeHtml(g.gericht_name)}</span><span class="listen-eintrag-wert">${g.kcal_pro_100g_berechnet || 0} kcal</span></div>`
+  ).join('');
+  listeEl.querySelectorAll('.listen-eintrag').forEach(el => {
+    el.addEventListener('click', () => {
+      const g = (gerichteCache || []).find(x => x.gericht_id === el.dataset.id);
+      const cb = egPickerCallback;
+      egPickerSchliessen();
+      if (cb && g) cb(g);
+    });
+  });
+}
+
+function egPickerSchliessen() {
+  document.getElementById('popup-eg-picker').classList.add('versteckt');
+  egPickerCallback = null;
+}
+
+/* -- Gemeinsame kleine Helfer ----------------------------------- */
+
+function werkzeugGespeichertHinweis(hinweisId, name) {
+  document.getElementById(hinweisId).textContent = `Gespeichert als „${name}". Wird beim nächsten Sync hochgeladen.`;
+}
+
+/**
+ * Oeffnet einen bestimmten Rechner (Router-Ziel #/werkzeug/<welches>).
+ */
+async function werkzeugOeffnen(welches) {
+  switch (welches) {
+    case 'alkohol':       ansichtAnzeigen('ansicht-werkzeug-alkohol');       await alkoholRechnerLaden(); break;
+    case 'bruehe':        ansichtAnzeigen('ansicht-werkzeug-bruehe');        await bruehepulverRechnerLaden(); break;
+    case 'garfaktor-db':  ansichtAnzeigen('ansicht-werkzeug-garfaktor-db');  await garfaktorDbRechnerLaden(); break;
+    case 'garfaktor-tag': ansichtAnzeigen('ansicht-werkzeug-garfaktor-tag'); await garfaktorTagRechnerLaden(); break;
+    case 'rezept':        ansichtAnzeigen('ansicht-werkzeug-rezept');        await rezeptRechnerLaden(); break;
+    default:              await navigieren('werkzeuge');
+  }
+}
+
+/**
+ * Registriert alle Ereignisse der Werkzeuge (wird einmalig beim
+ * App-Start aus ereignisListenerRegistrieren gerufen).
+ */
+function ereignisWerkzeugeRegistrieren() {
+  const anInput  = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('input', fn); };
+  const anChange = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('change', fn); };
+  const anClick  = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+  const speichernFehler = f => fehlermeldungAnzeigen('Speichern fehlgeschlagen: ' + f.message);
+
+  /* Einstieg + Navigation */
+  anClick('knopf-werkzeuge', () => navigieren('werkzeuge'));
+  document.querySelectorAll('.werkzeug-reihe[data-werkzeug]').forEach(btn => {
+    btn.addEventListener('click', () => navigieren('werkzeug/' + btn.dataset.werkzeug));
+  });
+  document.querySelectorAll('.werkzeug-zurueck[data-zurueck]').forEach(btn => {
+    btn.addEventListener('click', () => navigieren(btn.dataset.zurueck));
+  });
+
+  /* Rechner 2: Alkohol */
+  ['alk-menge', 'alk-vol', 'alk-zusatz'].forEach(id => anInput(id, () => alkoholBerechnen()));
+  anChange('alk-einheit', () => alkoholBerechnen());
+  anClick('alk-speichern', () => alkoholSpeichern().catch(speichernFehler));
+
+  /* Rechner 3: Bruehepulver */
+  ['br-gesamt', 'br-trocken', 'br-kcal', 'br-bezug'].forEach(id => anInput(id, () => bruehepulverBerechnen()));
+  anClick('br-speichern', () => bruehepulverSpeichern().catch(speichernFehler));
+
+  /* Rechner 4: Garfaktor → DB */
+  ['gd-kcal', 'gd-eiweiss', 'gd-fett', 'gd-salz', 'gd-faktor'].forEach(id => anInput(id, () => garfaktorDbBerechnen()));
+  anClick('gd-speichern', () => garfaktorDbSpeichern().catch(speichernFehler));
+
+  /* Rechner 5: Garfaktor → Aufschreibung */
+  anClick('gt-lm-waehlen', () => {
+    lebensmittelWaehlen((lm) => {
+      garfaktorTagLm = lm;
+      document.getElementById('gt-lm-anzeige').textContent =
+        `${lm.name} · ${Math.round(deutscheZahlParsen(lm.kcal_pro_100g))} kcal/100g`;
+      garfaktorTagBerechnen();
+    }, false);
+  });
+  ['gt-gegart', 'gt-faktor'].forEach(id => anInput(id, () => garfaktorTagBerechnen()));
+  anClick('gt-anzeigen', () => garfaktorTagBerechnen());
+
+  /* Rechner 1: Rezeptrechner */
+  anClick('rz-zutat-hinzufuegen', () => rezeptZutatHinzufuegen());
+  anInput('rz-endgewicht', () => { rezeptEndgewichtManuell = true; rezeptAktualisieren(); });
+  anClick('rz-speichern', () => rezeptSpeichern().catch(speichernFehler));
+  anClick('rz-laden', () => rezeptBestehendesLaden().catch(f => fehlermeldungAnzeigen('Laden fehlgeschlagen: ' + f.message)));
+
+  /* Lebensmittel-Auswahl-Popup */
+  anInput('lm-picker-suche', () => lmPickerTrefferRendern());
+  anClick('lm-picker-hinzufuegen', () => lmPickerMengeBestaetigen());
+  anClick('lm-picker-abbrechen', () => lmPickerSchliessen());
+
+  /* Eigengericht-Auswahl-Popup */
+  anInput('eg-picker-suche', () => egPickerTrefferRendern());
+  anClick('eg-picker-abbrechen', () => egPickerSchliessen());
+}
+
 /* ----------------------------------------------------------------
    8. EREIGNIS-LISTENER UND STEUERUNG
    ---------------------------------------------------------------- */
@@ -3248,6 +4001,9 @@ function ereignisListenerRegistrieren() {
   document.getElementById('vital-form').addEventListener('submit', (e) => {
     vitalwerteSpeichern(e).catch(fehler => fehlermeldungAnzeigen('Speichern fehlgeschlagen: ' + fehler.message));
   });
+
+  /* --- Werkzeuge (Phase D) --- */
+  ereignisWerkzeugeRegistrieren();
 
   /* Suche Lebensmittel */
   document.getElementById('lebensmittel-suche').addEventListener('input', (e) => {

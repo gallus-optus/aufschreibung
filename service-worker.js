@@ -11,7 +11,7 @@
    eine frische Verbindung.
    ================================================================ */
 
-const CACHE_NAME = 'aufschreibung-v0.3';
+const CACHE_NAME = 'aufschreibung-v0.4';
 
 /* Liste der Dateien, die offline verfügbar sein sollen */
 const CACHE_DATEIEN = [

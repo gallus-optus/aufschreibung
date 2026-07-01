@@ -1288,3 +1288,215 @@ body {
   margin-bottom: 16px;
   line-height: 1.5;
 }
+
+/* ================================================================
+   PHASE D — Werkzeuge (Uebersicht, Rechner, Picker)
+   ================================================================ */
+
+/* Werkzeug-Uebersichtszeile (Icon + Text + Chevron) */
+.werkzeug-reihe {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 4px;
+  border: none;
+  border-bottom: 0.5px solid var(--border);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  min-height: var(--tap-min);
+}
+
+.werkzeug-reihe:active {
+  background: var(--flaeche-gedaempft);
+}
+
+.werkzeug-icon {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-akzent);
+}
+
+.werkzeug-text {
+  flex: 1;
+  overflow: hidden;
+}
+
+.werkzeug-text b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primaer);
+}
+
+.werkzeug-text span {
+  font-size: 12px;
+  color: var(--text-sekundaer);
+}
+
+.werkzeug-chev {
+  flex-shrink: 0;
+  display: flex;
+  color: var(--text-gedaempft);
+}
+
+.werkzeug-fussnote {
+  text-align: center;
+  color: var(--text-gedaempft);
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+/* Blaue Ergebnis-Box der Rechner */
+.rechner-ergebnis {
+  background: var(--bg-akzent);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 14px 0;
+}
+
+.rechner-ergebnis-titel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-akzent);
+  font-weight: 600;
+}
+
+.rechner-ergebnis-gross {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-primaer);
+  margin: 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.rechner-ergebnis-sub {
+  font-size: 12px;
+  color: var(--text-sekundaer);
+}
+
+.rechner-detail {
+  margin-top: 10px;
+}
+
+.rechner-nrow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.rechner-nrow .l {
+  color: var(--text-sekundaer);
+}
+
+/* Kleiner Hinweistext unter Rechnern */
+.md-hint-text {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.md-hint-text b {
+  color: var(--text-primaer);
+  font-weight: 600;
+}
+
+/* Schreibgeschuetztes Feld (Rohmasse) dezent absetzen */
+.formular-feld input[readonly] {
+  background: var(--flaeche);
+  color: var(--text-sekundaer);
+}
+
+/* Auswahl-Feld, das wie ein Eingabefeld aussieht (Garfaktor→Tag) */
+.picker-feld {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--flaeche-gedaempft);
+  color: var(--text-primaer);
+  font-size: 15px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-feld:active {
+  border-color: var(--border-akzent);
+}
+
+/* Zutaten-Liste im Rezeptrechner */
+.rezept-zutat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
+}
+
+.rz-name {
+  flex: 1;
+  color: var(--text-primaer);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rz-menge {
+  color: var(--text-sekundaer);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.rz-entfernen {
+  border: none;
+  background: none;
+  color: var(--gefahr-text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.rezept-leer {
+  padding: 14px 0;
+  color: var(--text-gedaempft);
+  font-size: 13px;
+}
+
+.rezept-zutat-hinzufuegen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-akzent);
+  font-size: 13px;
+  padding: 10px 0;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+/* Groesseres Popup (Auswahl-Listen) mit scrollbarer Trefferliste */
+.popup-karte-gross {
+  max-width: 360px;
+}
+
+.picker-liste {
+  max-height: 44vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 6px;
+}
