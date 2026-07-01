@@ -3008,37 +3008,93 @@ async function syncDateiEigengerichte(metaMap, syncMeta) {
   const zutaten  = await dbAllesLesen('zutaten');
   const gerichteMap = new Map(gerichte.map(g => [g.gericht_id, g]));
 
-  /* gramm_pro_* je gericht_id aus der Dropbox-CSV einsammeln */
+  /* Dropbox-02 vollstaendig einlesen (falls veraendert): je gericht_id
+     die Kopfdaten, die gramm_pro_* und die Zutaten-Zeilen. */
   const revUnveraendert = meta && meta.rev === syncMeta.revs[dateiname];
-  const dropboxGramm = new Map();
+  const dropboxGerichte = new Map();   /* gericht_id → {kopf, gramm, zutaten} */
   if (meta && !revUnveraendert) {
     const inhalt = await dropboxDateiHerunterladen(pfad);
     for (const roh of csvParsen(inhalt)) {
       const gid = roh.gericht_id;
       if (!gid) continue;
-      if (!dropboxGramm.has(gid)) dropboxGramm.set(gid, {});
-      const ziel = dropboxGramm.get(gid);
+      if (!dropboxGerichte.has(gid)) {
+        dropboxGerichte.set(gid, {
+          gericht_name: roh.gericht_name || '',
+          gericht_kategorie: roh.gericht_kategorie || '',
+          gericht_original_kategorie: roh.gericht_original_kategorie || '',
+          gericht_endgewicht_g: roh.gericht_endgewicht_g || '',
+          gramm: {}, zutaten: [],
+        });
+      }
+      const eintrag = dropboxGerichte.get(gid);
+      eintrag.zutaten.push({
+        zutat_nr: roh.zutat_nr || '',
+        zutat_lebensmittel_id: roh.zutat_lebensmittel_id || '',
+        zutat_lebensmittel_name_original: roh.zutat_lebensmittel_name_original || '',
+        zutat_menge_g: roh.zutat_menge_g || '',
+      });
       for (const feld of einheitenFelder) {
         if (roh[feld] !== undefined && roh[feld] !== '' &&
-            (ziel[feld] === undefined || ziel[feld] === '')) {
-          ziel[feld] = roh[feld];
+            (eintrag.gramm[feld] === undefined || eintrag.gramm[feld] === '')) {
+          eintrag.gramm[feld] = roh[feld];
         }
       }
     }
   }
 
-  /* gramm_pro_* mergen: Dropbox gewinnt nur, wenn die lokale Aenderung
-     aelter ist als die Dropbox-Datei. Lokale Werte werden ggf. ueber-
-     schrieben und im Store aktualisiert (kommt der Einheiten-Logik
-     auf diesem Geraet zugute). */
+  /* NEU (Phase D): Komplett neue Gerichte aus Dropbox, die lokal fehlen,
+     lokal ergaenzen — mit allen Zutaten. Naehrwerte werden aus den
+     Zutaten berechnet und gecacht. Es geht NUR ums Hinzufuegen neuer
+     IDs; die Inhalte bestehender Gerichte bleiben unangetastet (kein
+     zeilenweiser Inhalts-Merge). */
+  if (dropboxGerichte.size > 0) {
+    const lmMap = await lebensmittelMapHolen();
+    for (const [gid, d] of dropboxGerichte.entries()) {
+      if (gerichteMap.has(gid)) continue;   /* existiert lokal → nur gramm-Merge */
+      const zutatenSaetze = d.zutaten.slice()
+        .sort((a, b) => (parseInt(a.zutat_nr) || 0) - (parseInt(b.zutat_nr) || 0))
+        .map(z => ({
+          gericht_id: gid, zutat_nr: z.zutat_nr,
+          zutat_lebensmittel_id: z.zutat_lebensmittel_id,
+          zutat_lebensmittel_name_original: z.zutat_lebensmittel_name_original,
+          zutat_menge_g: z.zutat_menge_g,
+        }));
+      const gericht = {
+        gericht_id: gid,
+        gericht_name: d.gericht_name,
+        gericht_kategorie: d.gericht_kategorie,
+        gericht_original_kategorie: d.gericht_original_kategorie,
+        gericht_endgewicht_g: d.gericht_endgewicht_g,
+        gramm_pro_stueck:     d.gramm.gramm_pro_stueck     || '',
+        gramm_pro_portion:    d.gramm.gramm_pro_portion    || '',
+        gramm_pro_scheibe:    d.gramm.gramm_pro_scheibe    || '',
+        gramm_pro_essloeffel: d.gramm.gramm_pro_essloeffel || '',
+        gramm_pro_teeloeffel: d.gramm.gramm_pro_teeloeffel || '',
+        sync_status: 'synchronisiert',
+        geaendert_am: meta.server_modified,
+      };
+      const berechnete = gerichtNaehrwerteBerechnen(zutatenSaetze, lmMap, deutscheZahlParsen(d.gericht_endgewicht_g));
+      gerichtNaehrwerteZuweisen(gericht, berechnete);
+      await dbSchreiben('eigengerichte', gericht);
+      await dbMassenSchreiben('zutaten', zutatenSaetze);
+      /* Lokale Strukturen mitfuehren, damit die spaeter gebaute CSV das
+         neue Gericht enthaelt. */
+      gerichteMap.set(gid, gericht);
+      gerichte.push(gericht);
+      for (const zs of zutatenSaetze) zutaten.push(zs);
+    }
+  }
+
+  /* gramm_pro_* auf BESTEHENDEN Gerichten mergen: Dropbox gewinnt nur,
+     wenn die lokale Aenderung aelter ist als die Dropbox-Datei. */
   let lokalGeaendert = false;
   for (const gericht of gerichte) {
-    const dGramm = dropboxGramm.get(gericht.gericht_id);
+    const d = dropboxGerichte.get(gericht.gericht_id);
     const lZeit = gericht.geaendert_am ? (Date.parse(gericht.geaendert_am) || 0) : 0;
-    if (dGramm && lZeit < serverModifiedMs) {
+    if (d && lZeit < serverModifiedMs) {
       let geaendert = false;
       for (const feld of einheitenFelder) {
-        const neu = dGramm[feld] !== undefined ? dGramm[feld] : '';
+        const neu = d.gramm[feld] !== undefined ? d.gramm[feld] : '';
         if ((gericht[feld] || '') !== neu) { gericht[feld] = neu; geaendert = true; }
       }
       if (geaendert) {
@@ -3049,7 +3105,7 @@ async function syncDateiEigengerichte(metaMap, syncMeta) {
     if (gericht.sync_status === 'neu' || gericht.sync_status === 'geaendert') lokalGeaendert = true;
   }
 
-  /* Zutaten je Gericht gruppieren und nach zutat_nr sortieren */
+  /* Zutaten je Gericht gruppieren (inkl. gerade importierter Gerichte) */
   const zutatenNachGericht = new Map();
   for (const z of zutaten) {
     if (!zutatenNachGericht.has(z.gericht_id)) zutatenNachGericht.set(z.gericht_id, []);
@@ -3057,48 +3113,40 @@ async function syncDateiEigengerichte(metaMap, syncMeta) {
   }
   const alleIds = Array.from(gerichteMap.keys()).sort();
 
-  /* Hilfsfunktion: baut die 02-Zeilen mit einer bestimmten Gramm-Quelle */
-  const csvZeilenBauen = (grammQuelle) => {
-    const zeilen = [];
-    for (const gid of alleIds) {
-      const gericht = gerichteMap.get(gid);
-      const liste = (zutatenNachGericht.get(gid) || []).slice()
-        .sort((a, b) => (parseInt(a.zutat_nr) || 0) - (parseInt(b.zutat_nr) || 0));
-      liste.forEach((z, idx) => {
-        const istErste = idx === 0;
-        const gramm = grammQuelle(gid);
-        const zeile = {
-          gericht_id: gid,
-          gericht_name: gericht.gericht_name || '',
-          gericht_kategorie: gericht.gericht_kategorie || '',
-          gericht_original_kategorie: gericht.gericht_original_kategorie || '',
-          gericht_endgewicht_g: gericht.gericht_endgewicht_g || '',
-          zutat_nr: z.zutat_nr,
-          zutat_lebensmittel_id: z.zutat_lebensmittel_id || '',
-          zutat_lebensmittel_name_original: z.zutat_lebensmittel_name_original || '',
-          zutat_menge_g: z.zutat_menge_g || '',
-        };
-        for (const feld of einheitenFelder) {
-          zeile[feld] = istErste ? (gramm[feld] || '') : '';
-        }
-        zeilen.push(zeile);
-      });
-    }
-    return zeilen;
-  };
-
-  const neueCsv = csvSchreiben(CSV_SPALTEN_02, csvZeilenBauen(gid => gerichteMap.get(gid)));
-
-  /* Upload-Entscheidung */
-  let mussHochladen;
-  if (!meta) {
-    mussHochladen = alleIds.length > 0;
-  } else if (revUnveraendert) {
-    mussHochladen = lokalGeaendert;
-  } else {
-    const dropboxCsv = csvSchreiben(CSV_SPALTEN_02, csvZeilenBauen(gid => dropboxGramm.get(gid) || {}));
-    mussHochladen = lokalGeaendert || (neueCsv !== dropboxCsv);
+  /* Kanonische 02-CSV aus allen lokalen Gerichten + Zutaten. Die
+     gramm_pro_* stehen nur auf der ersten Zutat-Zeile je Gericht. */
+  const csvZeilen = [];
+  for (const gid of alleIds) {
+    const gericht = gerichteMap.get(gid);
+    const liste = (zutatenNachGericht.get(gid) || []).slice()
+      .sort((a, b) => (parseInt(a.zutat_nr) || 0) - (parseInt(b.zutat_nr) || 0));
+    liste.forEach((z, idx) => {
+      const istErste = idx === 0;
+      const zeile = {
+        gericht_id: gid,
+        gericht_name: gericht.gericht_name || '',
+        gericht_kategorie: gericht.gericht_kategorie || '',
+        gericht_original_kategorie: gericht.gericht_original_kategorie || '',
+        gericht_endgewicht_g: gericht.gericht_endgewicht_g || '',
+        zutat_nr: z.zutat_nr,
+        zutat_lebensmittel_id: z.zutat_lebensmittel_id || '',
+        zutat_lebensmittel_name_original: z.zutat_lebensmittel_name_original || '',
+        zutat_menge_g: z.zutat_menge_g || '',
+      };
+      for (const feld of einheitenFelder) {
+        zeile[feld] = istErste ? (gericht[feld] || '') : '';
+      }
+      csvZeilen.push(zeile);
+    });
   }
+  const neueCsv = csvSchreiben(CSV_SPALTEN_02, csvZeilen);
+
+  /* Upload-Entscheidung: hochladen, wenn lokale Aenderungen anstehen —
+     neue lokale Gerichte tragen sync_status "neu", geaenderte gramm_pro_*
+     "geaendert". Rein aus Dropbox importierte Gerichte sind bereits
+     "synchronisiert" und loesen keinen (Rueck-)Upload aus. So werden
+     auch Zutaten-Inhalte bestehender Gerichte nicht ueberschrieben. */
+  const mussHochladen = meta ? lokalGeaendert : (alleIds.length > 0);
 
   let neueRev = meta ? meta.rev : null;
   if (mussHochladen) {
