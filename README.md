@@ -3,9 +3,27 @@
 Progressive Web App zur persönlichen Ernährungs- und Vitalwert-Aufzeichnung.
 
 **Live-App:** https://gallus-optus.github.io/aufschreibung/
-**Version:** 0.3 (Phase F)
+**Version:** 0.4 (Phase D)
 
 ## Was die App kann
+
+### Werkzeuge / Rechner (Phase D)
+
+Ein Bereich „Werkzeuge" im Mehr-Tab mit fünf Rechnern:
+
+- **Rezeptrechner** — Eigengericht aus Zutaten zusammenstellen, mit
+  Endgewicht-Korrektur (Wasser verkocht/kommt hinzu), als neues Gericht
+  speichern; bestehendes Rezept laden und abgewandelt neu speichern
+- **Alkoholrechner** — kcal und Alkohol-Gramm pro 100 g
+- **Brühepulver-Rechner** — Nährwerte pro 100 g Trockenpulver
+- **Garfaktor: Quelle → Datenbank** — gegarte Nährwerte auf roh umrechnen
+- **Garfaktor: für die Aufschreibung** — gegartes Gewicht auf rohe Portion
+  umrechnen (reine Anzeige)
+
+Neu angelegte Lebensmittel/Gerichte werden über den Dropbox-Sync
+automatisch hochgeladen; im Rezeptrechner erstellte Gerichte erscheinen
+auch auf anderen Geräten. Eigengerichte führen jetzt den vollen
+Nährwert-Satz (inkl. Zucker, gesättigte/ungesättigte Fette, Ballaststoffe).
 
 ### Dropbox-Synchronisierung (Phase F)
 
