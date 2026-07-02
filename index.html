@@ -279,7 +279,7 @@
       <div class="einstellungen-abschnitt-titel">Über</div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Version</span>
-        <span class="einstellungen-wert">0.5 (Phase E)</span>
+        <span class="einstellungen-wert">0.6 (G1)</span>
       </div>
       <div class="einstellungen-reihe">
         <span class="einstellungen-label">Quelltext</span>
@@ -293,12 +293,17 @@
        BILDSCHIRM 8: Heute (Startbildschirm Phase C)
        ============================================================ -->
   <div id="ansicht-heute" class="ansicht mit-tabbar">
-    <div class="standard-header">
-      <h2 class="header-titel" id="heute-titel">Heute</h2>
-      <button class="header-icon-knopf" aria-label="Kalender" disabled>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="5" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/>
-        </svg>
+    <!-- G1: Datums-Navigationszeile (Zurück · Datum antippbar · Vor) -->
+    <div class="datum-zeile">
+      <button class="datum-pfeil" id="datum-zurueck" aria-label="Vorheriger Tag">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button class="datum-mitte" id="datum-mitte" aria-label="Kalender öffnen">
+        <span class="datum-haupt" id="datum-haupt">Heute</span>
+        <span class="datum-sub" id="datum-sub"></span>
+      </button>
+      <button class="datum-pfeil" id="datum-vor" aria-label="Nächster Tag">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
       </button>
     </div>
     <div id="heute-inhalt" class="ansicht-inhalt"></div>
@@ -400,6 +405,8 @@
       <h2 id="menge-titel" class="header-titel">Menge eingeben</h2>
     </div>
     <div class="ansicht-inhalt">
+      <!-- G1: Hinweis, wenn fuer einen vergangenen Tag nachgetragen wird -->
+      <div id="menge-nachtrag" class="nachtrag-banner versteckt"></div>
       <div class="menge-kopf">
         <div class="menge-kopf-name" id="menge-name"></div>
         <div class="menge-kopf-kcal" id="menge-kcal-info"></div>
@@ -787,6 +794,29 @@
       </div>
       <button type="button" id="popup-einheit-speichern" class="knopf-voll-primaer">Speichern und weiter</button>
       <button type="button" id="popup-einheit-abbrechen" class="knopf-voll-ghost">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       POPUP: Kalender (G1) — Tag zum Anzeigen/Bearbeiten wählen
+       ============================================================ -->
+  <div id="popup-kalender" class="popup-overlay versteckt" role="dialog" aria-modal="true" aria-label="Kalender">
+    <div class="popup-karte popup-karte-gross">
+      <div class="kalender-kopf">
+        <button type="button" class="datum-pfeil" id="kalender-vormonat" aria-label="Vorheriger Monat">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="kalender-monat" id="kalender-monat">Monat JJJJ</span>
+        <button type="button" class="datum-pfeil" id="kalender-nachmonat" aria-label="Nächster Monat">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+      </div>
+      <div class="kalender-wochentage">
+        <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
+      </div>
+      <div id="kalender-gitter" class="kalender-gitter"></div>
+      <div class="kalender-hinweis">Punkt = Tag mit erfassten Daten. Tage ohne Punkt sind Lücken.</div>
+      <button type="button" id="kalender-abbrechen" class="knopf-voll-ghost">Schließen</button>
     </div>
   </div>
 

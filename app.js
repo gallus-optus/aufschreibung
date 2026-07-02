@@ -317,6 +317,46 @@ function dbLoeschen(storeName, schluessel) {
 }
 
 /**
+ * Liest alle PRIMAERSCHLUESSEL eines Object Store (ohne die Datensaetze
+ * selbst zu laden). Bei vitaldaten (Schluessel = datum) sind das direkt
+ * alle Tage mit Vitalwerten. Effizient fuer die Kalender-Markierung (G1).
+ * @param {string} storeName - Name des Object Store
+ * @returns {Promise<Array>}
+ */
+function dbAlleSchluessel(storeName) {
+  return new Promise((resolve, reject) => {
+    const transaktion = db.transaction(storeName, 'readonly');
+    const anfrage = transaktion.objectStore(storeName).getAllKeys();
+    anfrage.onsuccess = () => resolve(anfrage.result);
+    anfrage.onerror = () => reject(anfrage.error);
+  });
+}
+
+/**
+ * Liefert die EINDEUTIGEN Werte eines Index (z. B. alle Tage mit
+ * Erfassungen ueber den Index nach_datum) — per "nextunique"-Cursor,
+ * ohne die vollstaendigen Datensaetze zu lesen. Effizient fuer die
+ * Kalender-Markierung (G1).
+ * @param {string} storeName - Name des Object Store
+ * @param {string} indexName - Name des Index
+ * @returns {Promise<Array>}
+ */
+function dbIndexEindeutigeWerte(storeName, indexName) {
+  return new Promise((resolve, reject) => {
+    const werte = [];
+    const transaktion = db.transaction(storeName, 'readonly');
+    const index = transaktion.objectStore(storeName).index(indexName);
+    const anfrage = index.openKeyCursor(null, 'nextunique');
+    anfrage.onsuccess = () => {
+      const cursor = anfrage.result;
+      if (cursor) { werte.push(cursor.key); cursor.continue(); }
+      else resolve(werte);
+    };
+    anfrage.onerror = () => reject(anfrage.error);
+  });
+}
+
+/**
  * Liest alle Einträge aus einem Object Store.
  * @param {string} storeName - Name des Object Store
  * @returns {Promise<Array>}
@@ -1236,6 +1276,44 @@ function wochentagDatum(datumIso) {
   return `${wt} ${tag}.${monat}.`;
 }
 
+/* Kurze Wochentagsnamen fuer die volle Datumsanzeige (G1). */
+const WOCHENTAGE_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+
+/**
+ * Formatiert ein ISO-Datum als "Mo, 30.06.2026" (Wochentag + volles
+ * deutsches Datum mit Jahr). Genutzt in der Datums-Navigation (G1).
+ */
+function datumVollLang(datumIso) {
+  const teile = datumIso.split('-');
+  const d = new Date(Number(teile[0]), Number(teile[1]) - 1, Number(teile[2]), 12, 0, 0);
+  return `${WOCHENTAGE_KURZ[d.getDay()]}, ${zweiStellen(d.getDate())}.${zweiStellen(d.getMonth() + 1)}.${teile[0]}`;
+}
+
+/**
+ * Anzahl ganzer Tage zwischen zwei ISO-Datumswerten (bisIso - vonIso).
+ * Beide werden lokal um die Mittagszeit gebildet, damit die Differenz
+ * keine Sommerzeit-Kante trifft.
+ */
+function tageZwischen(vonIso, bisIso) {
+  const zu = iso => {
+    const t = iso.split('-');
+    return new Date(Number(t[0]), Number(t[1]) - 1, Number(t[2]), 12, 0, 0);
+  };
+  return Math.round((zu(bisIso) - zu(vonIso)) / 86400000);
+}
+
+/**
+ * Orientierungs-Text fuer einen vergangenen Tag: "gestern" oder
+ * "vor X Tagen" (bezogen auf heute). Leerer String, wenn das Datum
+ * heute oder in der Zukunft liegt.
+ */
+function tageDifferenzText(datumIso) {
+  const diff = tageZwischen(datumIso, heutigesDatum());
+  if (diff <= 0) return '';
+  if (diff === 1) return 'gestern';
+  return `vor ${diff} Tagen`;
+}
+
 /**
  * Erzeugt eine garantiert eindeutige Erfassungs-ID:
  * ERF_<Zeitstempel-ms>_<Zufallssuffix>. Auch ueber Geraete eindeutig.
@@ -1385,6 +1463,18 @@ let erfassenModus       = 'lebensmittel';  /* 'lebensmittel' | 'gerichte' */
 let erfassenSuchfilter  = '';
 let erfassenAuswahl     = null;  /* gewaehltes Lebensmittel/Gericht (Objekt) */
 let erfassenBearbeitenId = null; /* erfassungs_id im Bearbeiten-Modus, sonst null */
+
+/* G1 — der aktuell angezeigte Tag der Tagesansicht (Heute/Vitalwerte).
+   Startwert = heute; wird NICHT persistiert (beim App-Neustart wieder
+   heute). ALLE Datenabfragen der Tagesansicht filtern auf diesen Wert
+   ueber den IndexedDB-Index nach_datum. Ein Nachtrag ueber "+" nutzt
+   ebenfalls dieses Datum. */
+let angezeigtesDatum = heutigesDatum();
+
+/* Zustand des Kalender-Popups (G1). */
+let kalenderJahr  = 0;              /* aktuell angezeigter Monat im Kalender */
+let kalenderMonat = 0;             /* 0-basiert (0 = Januar) */
+let kalenderDatenTage = new Set(); /* Datumswerte mit Erfassungen/Vitalwerten */
 
 /* Zuordnung Bildschirm → Tab, der unten markiert sein soll. Detail-
    und Unter-Bildschirme verweisen auf ihren uebergeordneten Tab. */
@@ -2276,13 +2366,48 @@ function kalorienHinweis(summe, konfig) {
  * Balken und die nach Mahlzeit-Typ gruppierten Eintraege des Tages.
  */
 async function heuteAnsichtLaden() {
-  const datum = heutigesDatum();
-  document.getElementById('heute-titel').textContent = 'Heute · ' + wochentagDatum(datum);
+  /* G1: die Tagesansicht zeigt jetzt angezeigtesDatum statt fest heute. */
+  const datum = angezeigtesDatum;
+  const istHeute = (datum === heutigesDatum());
+
+  /* Datums-Navigationszeile (Heute/Datum, "vor X Tagen", Vorwaerts-Sperre) */
+  datumZeileAktualisieren();
 
   const konfig = await konfigurationHolen();
   const eintraege = await dbIndexLesen('erfassung', 'nach_datum', datum);
+  const vital = await dbLesen('vitaldaten', datum);
   const lmMap = await lebensmittelMapHolen();
   const egMap = await gerichteMapHolen();
+
+  const inhalt = document.getElementById('heute-inhalt');
+  const teile = [];
+
+  /* "Zurueck zu heute" — erscheint, sobald ein vergangener Tag angezeigt wird. */
+  if (!istHeute) {
+    teile.push(`<button type="button" id="zurueck-zu-heute" class="zurueck-heute-knopf">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg>
+      Zurück zu heute</button>`);
+  }
+
+  /* Leerer Tag: weder Erfassungen noch Vitalwerte → Nachtrag anbieten. */
+  if (eintraege.length === 0 && !vital) {
+    teile.push(`
+      <div class="tag-leer">
+        <div class="tag-leer-icon">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="9" y1="14" x2="15" y2="18"/><line x1="15" y1="14" x2="9" y2="18"/></svg>
+        </div>
+        Für diesen Tag ist noch nichts erfasst.<br>Du kannst Mahlzeiten und Vitalwerte nachtragen.
+      </div>
+      <button type="button" id="nachtrag-mahlzeit" class="nachtrag-knopf">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+        Mahlzeit für diesen Tag nachtragen</button>
+      <button type="button" id="nachtrag-vital" class="nachtrag-knopf sekundaer">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+        Vitalwerte für diesen Tag nachtragen</button>`);
+    inhalt.innerHTML = teile.join('');
+    heuteTagAktionenBinden(inhalt);
+    return;
+  }
 
   /* Summen berechnen; kcal je Eintrag fuer die Anzeige zwischenspeichern */
   let summeKcal = 0;
@@ -2301,7 +2426,6 @@ async function heuteAnsichtLaden() {
   /* Tropfen-Symbol fuer den Trinkmengen-Balken */
   const tropfenSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 3c3 4 6 7 6 10.5a6 6 0 0 1 -12 0C6 10 9 7 12 3z"/></svg>';
 
-  const teile = [];
   teile.push(`<div class="heute-ring-wrap">${kalorienKreisSvg(summeKcal, konfig)}<div class="heute-ring-sub">${escapeHtml(kalorienHinweis(summeKcal, konfig))}</div></div>`);
   teile.push(`
     <div class="balken-reihe">
@@ -2312,10 +2436,10 @@ async function heuteAnsichtLaden() {
       <div class="balken-spur"><div class="balken-fueller" style="width:${(trinkAnteil * 100).toFixed(0)}%"></div></div>
     </div>`);
 
-  teile.push('<div class="abschnitt-titel">Mahlzeiten heute</div>');
+  teile.push('<div class="abschnitt-titel">Mahlzeiten</div>');
 
   if (eintraege.length === 0) {
-    teile.push('<div class="leerer-zustand">Noch nichts erfasst. Tippe unten auf „+", um eine Mahlzeit hinzuzufügen.</div>');
+    teile.push('<div class="leerer-zustand">Noch keine Mahlzeit erfasst. Tippe unten auf „+", um eine hinzuzufügen.</div>');
   } else {
     for (const typ of MAHLZEIT_REIHENFOLGE) {
       const gruppe = eintraege.filter(e => e.mahlzeit_typ === typ);
@@ -2336,11 +2460,165 @@ async function heuteAnsichtLaden() {
     }
   }
 
-  const inhalt = document.getElementById('heute-inhalt');
   inhalt.innerHTML = teile.join('');
+  heuteTagAktionenBinden(inhalt);
+}
+
+/**
+ * Bindet die Klick-Ereignisse der (dynamisch gerenderten) Heute-Inhalte:
+ * Mahlzeit antippen (bearbeiten), "Zurueck zu heute" und die
+ * Nachtrag-Knoepfe eines leeren Tages.
+ */
+function heuteTagAktionenBinden(inhalt) {
+  const zurueck = document.getElementById('zurueck-zu-heute');
+  if (zurueck) zurueck.addEventListener('click', () => angezeigtesDatumSetzen(heutigesDatum()));
+  const nachtragMahlzeit = document.getElementById('nachtrag-mahlzeit');
+  if (nachtragMahlzeit) nachtragMahlzeit.addEventListener('click', () => erfassenNeuStarten());
+  const nachtragVital = document.getElementById('nachtrag-vital');
+  if (nachtragVital) nachtragVital.addEventListener('click', () => navigieren('vitalwerte'));
   inhalt.querySelectorAll('.mahlzeit-eintrag').forEach(el => {
     el.addEventListener('click', () => eintragBearbeitenOeffnen(el.dataset.id));
   });
+}
+
+/**
+ * Aktualisiert die Datums-Navigationszeile: "Heute" gross + Datum klein
+ * am heutigen Tag, sonst Wochentag+Datum gross + "vor X Tagen" klein.
+ * Der Vorwaerts-Pfeil ist am heutigen Tag deaktiviert (keine Zukunft).
+ */
+function datumZeileAktualisieren() {
+  const istHeute = (angezeigtesDatum === heutigesDatum());
+  const hauptEl = document.getElementById('datum-haupt');
+  const subEl   = document.getElementById('datum-sub');
+  const vorEl   = document.getElementById('datum-vor');
+  if (istHeute) {
+    hauptEl.textContent = 'Heute';
+    subEl.textContent = datumVollLang(angezeigtesDatum);
+    subEl.classList.remove('betont');
+  } else {
+    hauptEl.textContent = datumVollLang(angezeigtesDatum);
+    subEl.textContent = tageDifferenzText(angezeigtesDatum);
+    subEl.classList.add('betont');
+  }
+  vorEl.disabled = istHeute;
+  vorEl.classList.toggle('deaktiviert', istHeute);
+}
+
+/**
+ * Setzt den angezeigten Tag (Zukunft wird auf heute begrenzt) und rendert
+ * die Tagesansicht neu.
+ */
+async function angezeigtesDatumSetzen(neuesDatum) {
+  const heute = heutigesDatum();
+  angezeigtesDatum = (neuesDatum > heute) ? heute : neuesDatum;
+  await heuteAnsichtLaden();
+}
+
+/* -- Kalender-Popup (G1) ---------------------------------------- */
+
+/* Volle deutsche Monatsnamen fuer den Kalenderkopf. */
+const MONATE_LANG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+/**
+ * Oeffnet den Kalender im Monat des angezeigten Tages. Ermittelt dabei
+ * effizient alle Tage mit Daten (Erfassungen ODER Vitalwerte) fuer die
+ * Punkt-Markierung.
+ */
+async function kalenderOeffnen() {
+  const teile = angezeigtesDatum.split('-');
+  kalenderJahr  = Number(teile[0]);
+  kalenderMonat = Number(teile[1]) - 1;
+
+  const erfassungsTage = await dbIndexEindeutigeWerte('erfassung', 'nach_datum');
+  const vitalTage      = await dbAlleSchluessel('vitaldaten');
+  kalenderDatenTage = new Set([...erfassungsTage, ...vitalTage]);
+
+  kalenderRendern();
+  document.getElementById('popup-kalender').classList.remove('versteckt');
+}
+
+function kalenderSchliessen() {
+  document.getElementById('popup-kalender').classList.add('versteckt');
+}
+
+/**
+ * Rendert das Monatsgitter: Tage mit Daten bekommen einen Punkt, der
+ * gewaehlte Tag ist hervorgehoben, heute umrandet, Zukunft gesperrt.
+ */
+function kalenderRendern() {
+  const heute = heutigesDatum();
+  document.getElementById('kalender-monat').textContent = `${MONATE_LANG[kalenderMonat]} ${kalenderJahr}`;
+
+  /* Wochenstart Montag: Versatz des 1. (So=0 → 6, Mo=1 → 0). */
+  const ersterWochentag = new Date(kalenderJahr, kalenderMonat, 1, 12, 0, 0).getDay();
+  const startVersatz = (ersterWochentag + 6) % 7;
+
+  const zellen = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(kalenderJahr, kalenderMonat, 1 - startVersatz + i, 12, 0, 0);
+    const iso = `${d.getFullYear()}-${zweiStellen(d.getMonth() + 1)}-${zweiStellen(d.getDate())}`;
+    const andererMonat = d.getMonth() !== kalenderMonat;
+    const istZukunft = iso > heute;
+
+    const klassen = ['kalender-tag'];
+    if (andererMonat) klassen.push('anderer-monat');
+    if (iso === heute) klassen.push('ist-heute');
+    if (iso === angezeigtesDatum) klassen.push('gewaehlt');
+    if (istZukunft) klassen.push('gesperrt');
+
+    /* Marker-Platz immer reservieren (transparent ohne Daten), damit die
+       Tageszahlen ueber alle Zeilen buendig bleiben. */
+    const marker = `<span class="kalender-marker${kalenderDatenTage.has(iso) ? '' : ' leer'}"></span>`;
+    zellen.push(`<button type="button" class="${klassen.join(' ')}"${istZukunft ? ' disabled' : ` data-datum="${iso}"`}><span class="kalender-tag-nr">${d.getDate()}</span>${marker}</button>`);
+  }
+
+  const gitter = document.getElementById('kalender-gitter');
+  gitter.innerHTML = zellen.join('');
+  gitter.querySelectorAll('.kalender-tag[data-datum]').forEach(el => {
+    el.addEventListener('click', () => {
+      kalenderSchliessen();
+      angezeigtesDatumSetzen(el.dataset.datum);
+    });
+  });
+
+  /* Vorwaerts-Blaettern nur bis zum aktuellen Monat. */
+  const jetzt = new Date();
+  const nichtWeiter = (kalenderJahr > jetzt.getFullYear()) ||
+    (kalenderJahr === jetzt.getFullYear() && kalenderMonat >= jetzt.getMonth());
+  const nachEl = document.getElementById('kalender-nachmonat');
+  nachEl.disabled = nichtWeiter;
+  nachEl.classList.toggle('deaktiviert', nichtWeiter);
+}
+
+/**
+ * Blaettert den Kalender um einen Monat vor/zurueck.
+ */
+function kalenderMonatWechseln(delta) {
+  kalenderMonat += delta;
+  if (kalenderMonat < 0) { kalenderMonat = 11; kalenderJahr--; }
+  else if (kalenderMonat > 11) { kalenderMonat = 0; kalenderJahr++; }
+  kalenderRendern();
+}
+
+/**
+ * Registriert die Ereignisse der Datums-Navigation und des Kalenders
+ * (einmalig beim App-Start). Die statischen Elemente liegen im
+ * Heute-Bildschirm bzw. im Kalender-Popup.
+ */
+function ereignisDatumsNavigationRegistrieren() {
+  document.getElementById('datum-zurueck').addEventListener('click',
+    () => angezeigtesDatumSetzen(datumPlusTage(angezeigtesDatum, -1)));
+
+  document.getElementById('datum-vor').addEventListener('click', () => {
+    if (angezeigtesDatum >= heutigesDatum()) return;   /* Zukunft gesperrt */
+    angezeigtesDatumSetzen(datumPlusTage(angezeigtesDatum, 1));
+  });
+
+  document.getElementById('datum-mitte').addEventListener('click', () => kalenderOeffnen());
+
+  document.getElementById('kalender-vormonat').addEventListener('click', () => kalenderMonatWechseln(-1));
+  document.getElementById('kalender-nachmonat').addEventListener('click', () => kalenderMonatWechseln(1));
+  document.getElementById('kalender-abbrechen').addEventListener('click', () => kalenderSchliessen());
 }
 
 /* -- Bildschirm: Erfassen Schritt 1 (Suche) --------------------- */
@@ -2451,6 +2729,15 @@ async function erfassenMengeLaden() {
     erfassenBearbeitenId ? 'Eintrag bearbeiten' : 'Menge eingeben';
   document.getElementById('menge-name').textContent = auswahl.name;
   document.getElementById('menge-kcal-info').textContent = `${kcal100} kcal pro 100 g`;
+
+  /* G1: Nachtrag-Hinweis, wenn fuer einen vergangenen Tag NEU erfasst wird. */
+  const nachtragEl = document.getElementById('menge-nachtrag');
+  if (!erfassenBearbeitenId && angezeigtesDatum !== heutigesDatum()) {
+    nachtragEl.textContent = 'Nachtrag · ' + datumVollLang(angezeigtesDatum);
+    nachtragEl.classList.remove('versteckt');
+  } else {
+    nachtragEl.classList.add('versteckt');
+  }
 
   /* Einheit-Dropdown */
   document.getElementById('menge-einheit').innerHTML =
@@ -2627,7 +2914,8 @@ async function erfassenSpeichern() {
     eintrag = await dbLesen('erfassung', erfassenBearbeitenId) || { erfassungs_id: erfassenBearbeitenId };
     altStatus = eintrag.sync_status;
   } else {
-    eintrag = { erfassungs_id: erfassungsIdErzeugen(), datum: heutigesDatum() };
+    /* G1: Neu-Eintrag bekommt das angezeigte Datum (Nachtrag moeglich). */
+    eintrag = { erfassungs_id: erfassungsIdErzeugen(), datum: angezeigtesDatum };
     altStatus = undefined;
   }
 
@@ -2705,8 +2993,11 @@ async function erfassenEintragLoeschen() {
  * Eintrag, falls schon einer existiert.
  */
 async function vitalwerteLaden() {
-  const datum = heutigesDatum();
-  document.getElementById('vital-titel').textContent = 'Vitalwerte · ' + wochentagDatum(datum);
+  /* G1: folgt konsequent dem angezeigten Tag (ein Formular fuer alles). */
+  const datum = angezeigtesDatum;
+  const istHeute = (datum === heutigesDatum());
+  document.getElementById('vital-titel').textContent =
+    'Vitalwerte · ' + (istHeute ? 'Heute' : datumVollLang(datum));
 
   const vorhanden = await dbLesen('vitaldaten', datum);
   const setze = (id, wert) => {
@@ -2721,8 +3012,10 @@ async function vitalwerteLaden() {
   setze('vital-kfaktor',   vorhanden && vorhanden.k_faktor);
   setze('vital-bemerkung', vorhanden && vorhanden.bemerkung);
 
-  document.getElementById('vital-hinweis').textContent =
-    vorhanden ? 'Heutiger Eintrag geladen — Speichern überschreibt ihn.' : '';
+  document.getElementById('vital-hinweis').textContent = vorhanden
+    ? (istHeute ? 'Heutiger Eintrag geladen — Speichern überschreibt ihn.'
+                : 'Eintrag dieses Tages geladen — Speichern überschreibt ihn.')
+    : '';
 }
 
 /**
@@ -2731,7 +3024,9 @@ async function vitalwerteLaden() {
  */
 async function vitalwerteSpeichern(ereignis) {
   if (ereignis) ereignis.preventDefault();
-  const datum = heutigesDatum();
+  /* G1: fuer den angezeigten Tag speichern (ueberschreibt dessen
+     vorhandenen Datensatz — weiterhin genau ein Eintrag pro Tag). */
+  const datum = angezeigtesDatum;
   const lese = id => document.getElementById(id).value.trim();
   /* Dezimalfelder auf deutsches Komma normalisieren (CSV-konform). */
   const dez = id => { const v = lese(id); return v === '' ? '' : v.replace('.', ','); };
@@ -4977,6 +5272,9 @@ function ereignisListenerRegistrieren() {
 
   /* --- Verlauf (Phase E) --- */
   ereignisVerlaufRegistrieren();
+
+  /* --- Datums-Navigation (G1) --- */
+  ereignisDatumsNavigationRegistrieren();
 
   /* Suche Lebensmittel */
   document.getElementById('lebensmittel-suche').addEventListener('input', (e) => {

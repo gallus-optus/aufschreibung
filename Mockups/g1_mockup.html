@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G1 — Mockup Datums-Navigation</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg-page:#FAFAFA; --surface-1:#F5F5F4; --surface-2:#FFF;
+  --text-primary:#1A1A1A; --text-secondary:#6B6B6B; --text-muted:#999;
+  --text-accent:#0061FF; --bg-accent:#E6F1FB;
+  --border:#E5E5E5; --border-strong:#D4D4D4; --border-accent:#85B7EB;
+  --radius:8px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:#1A1A1A; --surface-1:#2A2A2A; --surface-2:#2E2E2E;
+    --text-primary:#F0F0F0; --text-secondary:#BBB; --text-muted:#888;
+    --text-accent:#5DA9F0; --bg-accent:#1E3A5C; --border:#3A3A3A;
+    --border-strong:#4A4A4A;
+  }
+}
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:var(--bg-page); color:var(--text-primary); font-family:var(--font-sans); font-size:15px; line-height:1.6; }
+.page { max-width:800px; margin:0 auto; padding:32px 20px 80px; }
+h1 { font-size:24px; font-weight:500; margin:0 0 8px; }
+h2 { font-size:18px; font-weight:500; margin:36px 0 12px; }
+.intro { background:var(--surface-1); border-radius:var(--radius); padding:16px 20px; margin-bottom:24px; font-size:14px; color:var(--text-secondary); line-height:1.7; }
+.intro p { margin:0 0 8px; } .intro p:last-child { margin:0; } .intro strong { color:var(--text-primary); font-weight:500; }
+
+.g1-nav { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 24px; justify-content:center; padding:12px; background:var(--surface-1); border-radius:var(--radius); position:sticky; top:0; z-index:10; }
+.g1-nav button { font-size:12px; padding:6px 10px; background:var(--surface-2); border:0.5px solid var(--border); border-radius:var(--radius); cursor:pointer; color:var(--text-secondary); font-family:inherit; }
+.g1-nav button.act { background:var(--bg-accent); color:var(--text-accent); border-color:var(--border-accent); font-weight:500; }
+.g1-wrap { display:flex; justify-content:center; margin:0 0 16px; }
+.g1-phone { width:340px; background:var(--surface-2); border:0.5px solid var(--border-strong); border-radius:22px; overflow:hidden; }
+.g1-status { background:var(--surface-1); padding:6px 16px; display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); font-weight:500; }
+.g1-status i { font-size:14px; vertical-align:-2px; }
+.g1-content { padding:0 0 12px; min-height:500px; }
+.g1-explain { margin:8px auto 24px; max-width:560px; padding:14px 18px; background:var(--surface-1); border-radius:var(--radius); font-size:13px; color:var(--text-secondary); line-height:1.7; }
+.g1-explain b { color:var(--text-primary); font-weight:500; }
+
+.g1-datebar { display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:0.5px solid var(--border); }
+.g1-arrow { width:34px; height:34px; border-radius:8px; border:0.5px solid var(--border); background:var(--surface-1); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-secondary); font-size:16px; flex-shrink:0; }
+.g1-arrow.dis { opacity:0.35; }
+.g1-datemid { flex:1; text-align:center; cursor:pointer; }
+.g1-datemid .dt { font-size:16px; font-weight:500; }
+.g1-datemid .sub { font-size:11px; color:var(--text-accent); }
+.g1-today { font-size:11px; padding:5px 10px; border-radius:999px; background:var(--bg-accent); color:var(--text-accent); border:none; cursor:pointer; flex-shrink:0; }
+
+.g1-body { padding:16px; }
+.g1-donut { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
+.g1-kcalinfo .big { font-size:24px; font-weight:500; }
+.g1-kcalinfo .lab { font-size:12px; color:var(--text-secondary); }
+.g1-trink { height:8px; border-radius:999px; background:var(--surface-1); overflow:hidden; margin:6px 0 2px; }
+.g1-trink .fill { height:100%; background:#378add; }
+
+.g1-mealhead { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin:14px 0 4px; font-weight:500; }
+.g1-item { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:0.5px solid var(--border); font-size:13px; }
+.g1-item .nm { flex:1; } .g1-item .mg { color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+.g1-item .ed { color:var(--text-accent); font-size:15px; cursor:pointer; }
+
+.g1-empty { text-align:center; color:var(--text-muted); font-size:13px; padding:30px 16px; line-height:1.6; }
+.g1-addbtn { display:flex; align-items:center; justify-content:center; gap:6px; margin:12px 16px; padding:11px; border-radius:8px; background:var(--bg-accent); color:var(--text-accent); font-size:13px; font-weight:500; cursor:pointer; }
+
+.g1-cal { padding:8px 16px 16px; }
+.g1-calhead { display:flex; align-items:center; justify-content:space-between; padding:8px 0 12px; }
+.g1-calhead .mo { font-size:15px; font-weight:500; }
+.g1-calgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.g1-dow { text-align:center; font-size:10px; color:var(--text-muted); padding:4px 0; }
+.g1-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:13px; border-radius:8px; cursor:pointer; position:relative; }
+.g1-day .dnum { line-height:1; }
+.g1-day .dmark { width:4px; height:4px; border-radius:50%; background:#378add; margin-top:3px; }
+.g1-day.other { color:var(--text-muted); opacity:0.4; }
+.g1-day.sel { background:var(--text-accent); color:#fff; }
+.g1-day.sel .dmark { background:#fff; }
+.g1-day.tod { border:1.5px solid var(--border-accent); }
+
+.g1-field { margin-bottom:12px; }
+.g1-field label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+.g1-field input, .g1-field select { width:100%; box-sizing:border-box; height:36px; padding:0 10px; font-size:14px; background:var(--surface-1); border:0.5px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:inherit; }
+.g1-row2 { display:flex; gap:10px; } .g1-row2 .g1-field { flex:1; }
+.g1-hint2 { font-size:11px; color:var(--text-muted); margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>G1 — Mockup Datums-Navigation</h1>
+
+<div class="intro">
+<p><strong>Was ist das?</strong> Klickbares Mockup der Datums-Navigation zum Anschauen, Bearbeiten und Nachtragen vergangener Tage. Die bestehende Heute-Ansicht bekommt eine Datumszeile und einen markierenden Kalender.</p>
+<p><strong>Nicht echt:</strong> Werte und Navigation sind Beispieldaten. Visuelle Referenz für den Coder.</p>
+</div>
+
+<h2>Bildschirme durchklicken</h2>
+
+<div class="g1-nav">
+<button data-s="0" class="act">1. Heute</button>
+<button data-s="1">2. Vergangener Tag</button>
+<button data-s="2">3. Leerer Tag</button>
+<button data-s="3">4. Kalender</button>
+<button data-s="4">5. Nachtrag erfassen</button>
+</div>
+
+<div class="g1-screen" data-sid="0">
+<div class="g1-wrap"><div class="g1-phone">
+<div class="g1-status"><span>18:30</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="g1-content">
+<div class="g1-datebar">
+<div class="g1-arrow"><i class="ti ti-chevron-left"></i></div>
+<div class="g1-datemid"><div class="dt">Heute</div><div class="sub" style="color:var(--text-muted)">Mi, 02.07.2026</div></div>
+<div class="g1-arrow dis"><i class="ti ti-chevron-right"></i></div>
+</div>
+<div class="g1-body">
+<div class="g1-donut">
+<svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--surface-1)" stroke-width="10"/><circle cx="36" cy="36" r="30" fill="none" stroke="#1D9E75" stroke-width="10" stroke-dasharray="135 189" stroke-linecap="round" transform="rotate(-90 36 36)"/></svg>
+<div class="g1-kcalinfo"><div class="big">1840 kcal</div><div class="lab">von 2200 kcal</div>
+<div class="g1-trink"><div class="fill" style="width:70%"></div></div>
+<div class="lab">1,4 von 2,0 L getrunken</div>
+</div>
+</div>
+<div class="g1-mealhead">Mittags</div>
+<div class="g1-item"><span class="nm">Vollkornbrot</span><span class="mg">2 Scheiben · 90 g</span><i class="ti ti-pencil ed"></i></div>
+<div class="g1-item"><span class="nm">Gouda 48 %</span><span class="mg">30 g</span><i class="ti ti-pencil ed"></i></div>
+<div class="g1-mealhead">Abends</div>
+<div class="g1-item"><span class="nm">Quetschkartoffeln</span><span class="mg">250 g</span><i class="ti ti-pencil ed"></i></div>
+</div>
+</div>
+</div></div>
+<div class="g1-explain"><b>Bildschirm 1 — Heute.</b> Die gewohnte Tagesansicht, jetzt mit Datumszeile oben. Am heutigen Tag steht "Heute" (Datum klein darunter), der Vorwärts-Pfeil ist deaktiviert (keine Zukunft). Der Zurück-Pfeil blättert einen Tag zurück, ein Tippen aufs Datum öffnet den Kalender.</div>
+</div>
+
+<div class="g1-screen" data-sid="1" style="display:none">
+<div class="g1-wrap"><div class="g1-phone">
+<div class="g1-status"><span>18:31</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="g1-content">
+<div class="g1-datebar">
+<div class="g1-arrow"><i class="ti ti-chevron-left"></i></div>
+<div class="g1-datemid"><div class="dt">Mo, 30.06.2026</div><div class="sub">vor 2 Tagen</div></div>
+<div class="g1-arrow"><i class="ti ti-chevron-right"></i></div>
+</div>
+<div class="g1-body">
+<div class="g1-donut">
+<svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="30" fill="none" stroke="var(--surface-1)" stroke-width="10"/><circle cx="36" cy="36" r="30" fill="none" stroke="#EF9F27" stroke-width="10" stroke-dasharray="170 189" stroke-linecap="round" transform="rotate(-90 36 36)"/></svg>
+<div class="g1-kcalinfo"><div class="big">2310 kcal</div><div class="lab">von 2200 kcal</div>
+<div class="g1-trink"><div class="fill" style="width:90%"></div></div>
+<div class="lab">1,8 von 2,0 L getrunken</div>
+</div>
+</div>
+<div class="g1-mealhead">Morgens</div>
+<div class="g1-item"><span class="nm">Haferflocken</span><span class="mg">60 g</span><i class="ti ti-pencil ed"></i></div>
+<div class="g1-item"><span class="nm">Milch 3,5 %</span><span class="mg">200 g</span><i class="ti ti-pencil ed"></i></div>
+<div class="g1-mealhead">Abends</div>
+<div class="g1-item"><span class="nm">Rindersteak roh</span><span class="mg">195 g</span><i class="ti ti-pencil ed"></i></div>
+</div>
+<div style="padding:0 16px"><span class="g1-today"><i class="ti ti-arrow-back-up"></i> Zurück zu heute</span></div>
+</div>
+</div></div>
+<div class="g1-explain"><b>Bildschirm 2 — Vergangener Tag.</b> Zurückgeblättert auf Montag. Die Überschrift zeigt Wochentag und Datum plus "vor 2 Tagen" zur Orientierung. Alle Einträge sind wie am heutigen Tag bearbeitbar (Stift) und löschbar. Ein "Zurück zu heute"-Knopf springt sofort zurück. Kalorien-Kreis und Trinkmenge gelten für diesen Tag.</div>
+</div>
+
+<div class="g1-screen" data-sid="2" style="display:none">
+<div class="g1-wrap"><div class="g1-phone">
+<div class="g1-status"><span>18:32</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="g1-content">
+<div class="g1-datebar">
+<div class="g1-arrow"><i class="ti ti-chevron-left"></i></div>
+<div class="g1-datemid"><div class="dt">Do, 26.06.2026</div><div class="sub">vor 6 Tagen</div></div>
+<div class="g1-arrow"><i class="ti ti-chevron-right"></i></div>
+</div>
+<div class="g1-body">
+<div class="g1-empty">
+<div style="font-size:30px;margin-bottom:8px;opacity:0.5"><i class="ti ti-calendar-off"></i></div>
+Für diesen Tag ist noch nichts erfasst.<br>Du kannst Mahlzeiten und Vitalwerte nachtragen.
+</div>
+</div>
+<div class="g1-addbtn"><i class="ti ti-plus"></i> Mahlzeit für diesen Tag nachtragen</div>
+<div class="g1-addbtn" style="background:var(--surface-1);color:var(--text-secondary)"><i class="ti ti-plus"></i> Vitalwerte für diesen Tag nachtragen</div>
+<div style="padding:0 16px"><span class="g1-today"><i class="ti ti-arrow-back-up"></i> Zurück zu heute</span></div>
+</div>
+</div></div>
+<div class="g1-explain"><b>Bildschirm 3 — Leerer Tag.</b> Ein Tag ohne Einträge. Statt der leeren Ansicht ein klarer Hinweis plus zwei Nachtrag-Knöpfe (Mahlzeit / Vitalwerte). So lassen sich vergessene Tage rückwirkend befüllen — der komplette Datenbestand ist erreichbar.</div>
+</div>
+
+<div class="g1-screen" data-sid="3" style="display:none">
+<div class="g1-wrap"><div class="g1-phone">
+<div class="g1-status"><span>18:33</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="g1-content">
+<div class="g1-datebar">
+<div class="g1-arrow"><i class="ti ti-chevron-left"></i></div>
+<div class="g1-datemid"><div class="dt">Kalender</div><div class="sub" style="color:var(--text-muted)">Tag wählen</div></div>
+<div class="g1-arrow"><i class="ti ti-x"></i></div>
+</div>
+<div class="g1-cal">
+<div class="g1-calhead"><span class="g1-arrow"><i class="ti ti-chevron-left"></i></span><span class="mo">Juni 2026</span><span class="g1-arrow"><i class="ti ti-chevron-right"></i></span></div>
+<div class="g1-calgrid">
+<div class="g1-dow">Mo</div><div class="g1-dow">Di</div><div class="g1-dow">Mi</div><div class="g1-dow">Do</div><div class="g1-dow">Fr</div><div class="g1-dow">Sa</div><div class="g1-dow">So</div>
+<div class="g1-day other"><span class="dnum">26</span></div><div class="g1-day other"><span class="dnum">27</span></div><div class="g1-day other"><span class="dnum">28</span></div><div class="g1-day other"><span class="dnum">29</span></div><div class="g1-day other"><span class="dnum">30</span></div><div class="g1-day other"><span class="dnum">31</span></div><div class="g1-day"><span class="dnum">1</span><span class="dmark"></span></div>
+<div class="g1-day"><span class="dnum">2</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">3</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">4</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">5</span></div><div class="g1-day"><span class="dnum">6</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">7</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">8</span><span class="dmark"></span></div>
+<div class="g1-day"><span class="dnum">9</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">10</span></div><div class="g1-day"><span class="dnum">11</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">12</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">13</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">14</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">15</span><span class="dmark"></span></div>
+<div class="g1-day"><span class="dnum">16</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">17</span><span class="dmark"></span></div><div class="g1-day sel"><span class="dnum">18</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">19</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">20</span></div><div class="g1-day"><span class="dnum">21</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">22</span><span class="dmark"></span></div>
+<div class="g1-day"><span class="dnum">23</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">24</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">25</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">26</span></div><div class="g1-day"><span class="dnum">27</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">28</span><span class="dmark"></span></div><div class="g1-day"><span class="dnum">29</span><span class="dmark"></span></div>
+<div class="g1-day"><span class="dnum">30</span><span class="dmark"></span></div>
+</div>
+<div class="g1-hint2" style="margin-top:12px;text-align:center">Punkt = Tag mit erfassten Daten. Tage ohne Punkt sind Lücken.</div>
+</div>
+</div>
+</div></div>
+<div class="g1-explain"><b>Bildschirm 4 — Kalender.</b> Öffnet sich beim Tippen aufs Datum. Monatsweise blätterbar. Tage mit erfassten Daten (Mahlzeiten oder Vitalwerte) tragen einen Punkt — so siehst Du auf einen Blick, wo Lücken sind. Der gewählte Tag ist markiert. Antippen springt zu diesem Tag in der Tagesansicht.</div>
+</div>
+
+<div class="g1-screen" data-sid="4" style="display:none">
+<div class="g1-wrap"><div class="g1-phone">
+<div class="g1-status"><span>18:34</span><span><i class="ti ti-wifi"></i> <i class="ti ti-battery-2"></i></span></div>
+<div class="g1-content">
+<div class="g1-datebar">
+<div class="g1-arrow"><i class="ti ti-chevron-left"></i></div>
+<div class="g1-datemid"><div class="dt">Nachtrag · Do, 26.06.</div><div class="sub">Mahlzeit erfassen</div></div>
+<div class="g1-arrow"><i class="ti ti-x"></i></div>
+</div>
+<div class="g1-body">
+<div class="g1-field"><label>Lebensmittel oder Gericht</label><input type="text" value="Haferflocken"></div>
+<div class="g1-row2">
+<div class="g1-field"><label>Menge</label><input type="text" value="60"></div>
+<div class="g1-field"><label>Einheit</label><select><option selected>Gramm</option><option>Portion</option><option>Stück</option></select></div>
+</div>
+<div class="g1-row2">
+<div class="g1-field"><label>Mahlzeit-Typ</label><select><option selected>Morgens</option><option>Mittags</option><option>Abends</option><option>Zwischen</option><option>Naschen</option><option>Trinken</option></select></div>
+<div class="g1-field"><label>Uhrzeit</label><input type="text" value="18:34"></div>
+</div>
+<div class="g1-hint2">Datum ist auf den 26.06.2026 gesetzt (der angezeigte Tag). Die Uhrzeit ist mit der aktuellen Zeit vorbelegt und kann geändert werden.</div>
+<div class="g1-addbtn" style="margin:16px 0 0">Nachtrag speichern</div>
+</div>
+</div>
+</div></div>
+<div class="g1-explain"><b>Bildschirm 5 — Nachtrag erfassen.</b> Drückst Du auf einem vergangenen Tag den "+"-Knopf, wird die Erfassung für genau diesen Tag gespeichert (Datum vorbelegt). Die Uhrzeit ist mit der aktuellen Zeit vorbelegt, aber änderbar. Sonst identisch zum normalen Erfassen-Ablauf inklusive Einheiten-Logik. Beim Speichern bekommt der Datensatz wie gewohnt geaendert_am und sync_status — der Dropbox-Sync lädt ihn hoch.</div>
+</div>
+
+</div>
+<script>
+(function(){
+  var screens=document.querySelectorAll('.g1-screen');
+  var buttons=document.querySelectorAll('.g1-nav button');
+  function show(id){
+    screens.forEach(function(s){ s.style.display=(s.dataset.sid===id)?'':'none'; });
+    buttons.forEach(function(b){ b.classList.toggle('act', b.dataset.s===id); });
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  buttons.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.s); }); });
+})();
+</script>
+</body>
+</html>

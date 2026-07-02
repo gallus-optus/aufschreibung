@@ -1715,3 +1715,273 @@ body {
   border-radius: 2px;
   display: inline-block;
 }
+
+/* ================================================================
+   G1 — Datums-Navigation, Kalender-Popup, Nachtrag/leerer Tag
+   ================================================================ */
+
+/* -- Datumszeile am Kopf der Heute-Ansicht --------------------- */
+.datum-zeile {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-xs);
+  min-height: var(--header-hoehe);
+  padding: 6px var(--abstand-s);
+  background: var(--flaeche);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Pfeil-Knoepfe (auch im Kalenderkopf verwendet) */
+.datum-pfeil {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--flaeche-gedaempft);
+  color: var(--text-sekundaer);
+  cursor: pointer;
+}
+
+.datum-pfeil:active {
+  background: var(--border);
+}
+
+/* Deaktivierter Pfeil (heute → kein Vorwaerts; letzter Monat → kein Weiter) */
+.datum-pfeil:disabled,
+.datum-pfeil.deaktiviert {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Antippbares Datum in der Mitte (oeffnet den Kalender) */
+.datum-mitte {
+  flex: 1;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px;
+}
+
+.datum-mitte:active {
+  opacity: 0.6;
+}
+
+.datum-haupt {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primaer);
+  line-height: 1.15;
+}
+
+.datum-sub {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  line-height: 1.15;
+}
+
+.datum-sub.betont {
+  color: var(--text-akzent);
+  font-weight: 600;
+}
+
+/* -- "Zurueck zu heute" (erscheint an vergangenen Tagen) ------- */
+.zurueck-heute-knopf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 0 auto 14px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg-akzent);
+  color: var(--text-akzent);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.zurueck-heute-knopf:active {
+  opacity: 0.7;
+}
+
+/* -- Leerer Tag: Hinweis + zwei Nachtrag-Knoepfe --------------- */
+.tag-leer {
+  text-align: center;
+  color: var(--text-gedaempft);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 22px 12px 6px;
+}
+
+.tag-leer-icon {
+  color: var(--text-gedaempft);
+  opacity: 0.55;
+  margin-bottom: 10px;
+}
+
+.nachtrag-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: var(--tap-min);
+  margin-top: 10px;
+  padding: 11px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--bg-akzent);
+  color: var(--text-akzent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nachtrag-knopf:active {
+  opacity: 0.7;
+}
+
+.nachtrag-knopf.sekundaer {
+  background: var(--flaeche-gedaempft);
+  color: var(--text-sekundaer);
+  border: 0.5px solid var(--border);
+}
+
+/* -- Nachtrag-Hinweis auf dem Mengen-Bildschirm ---------------- */
+.nachtrag-banner {
+  background: var(--bg-akzent);
+  color: var(--text-akzent);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* -- Kalender-Popup -------------------------------------------- */
+.popup-karte-gross {
+  max-width: 340px;
+}
+
+.kalender-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--abstand-xs);
+  margin-bottom: 14px;
+}
+
+.kalender-monat {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primaer);
+}
+
+.kalender-wochentage {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.kalender-wochentage span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-gedaempft);
+  padding: 2px 0;
+}
+
+.kalender-gitter {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.kalender-tag {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: 1.5px solid transparent;   /* Platz reservieren, damit "heute" nicht springt */
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-primaer);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.kalender-tag:active {
+  background: var(--flaeche-gedaempft);
+}
+
+.kalender-tag-nr {
+  line-height: 1;
+}
+
+.kalender-marker {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--blau);
+}
+
+.kalender-marker.leer {
+  background: transparent;   /* Platzhalter: haelt die Zahlen buendig */
+}
+
+.kalender-tag.anderer-monat {
+  color: var(--text-gedaempft);
+  opacity: 0.45;
+}
+
+.kalender-tag.ist-heute {
+  border-color: var(--border-akzent);
+}
+
+.kalender-tag.gewaehlt {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: #FFFFFF;
+}
+
+/* Nur echte Marker weiss faerben — der transparente Platzhalter (.leer)
+   bleibt unsichtbar, sonst erschiene am gewaehlten Tag ohne Daten ein Punkt. */
+.kalender-tag.gewaehlt .kalender-marker:not(.leer) {
+  background: #FFFFFF;
+}
+
+.kalender-tag.gesperrt {
+  opacity: 0.28;
+  cursor: default;
+  pointer-events: none;
+}
+
+.kalender-hinweis {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  text-align: center;
+  line-height: 1.45;
+  margin: 14px 0 12px;
+}
