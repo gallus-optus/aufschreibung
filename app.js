@@ -108,6 +108,68 @@ const STANDARD_GERICHT_KATEGORIEN = ['Hauptgericht', 'Suppe', 'Beilage', 'Soße 
 const STANDARD_LEBENSMITTEL_GRUPPEN = ['Getränke', 'Obst', 'Gemüse', 'Fleisch & Wurst', 'Fisch', 'Milchprodukte', 'Brot & Backwaren', 'Süßwaren', 'Fertiggerichte', 'Sonstiges'];
 
 /* ----------------------------------------------------------------
+   Verlauf-Diagramm (Phase E): Konstanten
+   ---------------------------------------------------------------- */
+
+/* Kategorial-Palette fuer die Kurven (maximal unterscheidbar).
+   Farbvergabe nach Variante B: beim Aktivieren eines Werts bekommt er
+   die ERSTE FREIE Farbe aus dieser Liste; sie bleibt stabil, solange
+   der Wert aktiv ist, und wird beim Deaktivieren wieder frei. Da
+   hoechstens 6 Werte gleichzeitig aktiv sind, ist nie eine Kollision
+   moeglich (8 Farben fuer 6 Plaetze). */
+const VERLAUF_FARBEN = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
+
+/* Maximal gleichzeitig aktive Kurven; ein 7. Haken deaktiviert den
+   am laengsten aktiven Wert (FIFO). */
+const VERLAUF_MAX_AKTIV = 6;
+
+/* Katalog aller waehlbaren Verlauf-Werte, in drei Gruppen:
+   - vital:      direkt aus den Vitaldaten (04), Feld = Spaltenname dort
+   - ernaehrung: Tagessummen, live aus den Erfassungen (03) berechnet
+   - mahlzeit:   kcal je Mahlzeit-Typ, ebenfalls live aus 03
+   "stellen" steuert die Rundung der echten Werte in der Antipp-Anzeige,
+   "kurz" ist der kompakte Name fuer das Antipp-Feld. */
+const VERLAUF_WERTE = [
+  /* Gruppe 1 — Vitalwerte (aus 04) */
+  { id: 'gewicht', name: 'Gewicht',               kurz: 'Gewicht',        einheit: 'kg',   gruppe: 'vital', feld: 'gewicht_kg' },
+  { id: 'bauch',   name: 'Bauchumfang',           kurz: 'Bauchumfang',    einheit: 'cm',   gruppe: 'vital', feld: 'bauchumfang_cm' },
+  { id: 'arm',     name: 'Armumfang',             kurz: 'Armumfang',      einheit: 'cm',   gruppe: 'vital', feld: 'armumfang_cm' },
+  { id: 'bd_sys',  name: 'Blutdruck systolisch',  kurz: 'Blutdruck sys.', einheit: 'mmHg', gruppe: 'vital', feld: 'blutdruck_systolisch' },
+  { id: 'bd_dia',  name: 'Blutdruck diastolisch', kurz: 'Blutdruck dia.', einheit: 'mmHg', gruppe: 'vital', feld: 'blutdruck_diastolisch' },
+  { id: 'puls',    name: 'Puls',                  kurz: 'Puls',           einheit: '/min', gruppe: 'vital', feld: 'puls' },
+  { id: 'kfaktor', name: 'k-Faktor',              kurz: 'k-Faktor',       einheit: '',     gruppe: 'vital', feld: 'k_faktor' },
+  /* Gruppe 2 — Ernaehrung Tagessummen (live aus 03) */
+  { id: 'kcal',        name: 'Kalorien gesamt',    kurz: 'Kalorien',      einheit: 'kcal', gruppe: 'ernaehrung', feld: 'kcal_gesamt',        stellen: 0 },
+  { id: 'trinkmenge',  name: 'Trinkmenge',         kurz: 'Trinkmenge',    einheit: 'ml',   gruppe: 'ernaehrung', feld: 'trinkmenge_ml',      stellen: 0 },
+  { id: 'eiweiss',     name: 'Eiweiß',             kurz: 'Eiweiß',        einheit: 'g',    gruppe: 'ernaehrung', feld: 'eiweiss_g',          stellen: 1 },
+  { id: 'kh',          name: 'Kohlenhydrate',      kurz: 'Kohlenhydrate', einheit: 'g',    gruppe: 'ernaehrung', feld: 'kohlenhydrate_g',    stellen: 1 },
+  { id: 'zucker',      name: 'Zucker',             kurz: 'Zucker',        einheit: 'g',    gruppe: 'ernaehrung', feld: 'zucker_g',           stellen: 1 },
+  { id: 'fett',        name: 'Fett',               kurz: 'Fett',          einheit: 'g',    gruppe: 'ernaehrung', feld: 'fett_g',             stellen: 1 },
+  { id: 'fett_ges',    name: 'gesättigtes Fett',   kurz: 'Fett gesätt.',  einheit: 'g',    gruppe: 'ernaehrung', feld: 'fett_gesaettigt_g',  stellen: 1 },
+  { id: 'fett_unges',  name: 'ungesättigtes Fett', kurz: 'Fett ungesätt.',einheit: 'g',    gruppe: 'ernaehrung', feld: 'fett_ungesaettigt_g',stellen: 1 },
+  { id: 'salz',        name: 'Salz',               kurz: 'Salz',          einheit: 'g',    gruppe: 'ernaehrung', feld: 'salz_g',             stellen: 2 },
+  { id: 'ballaststoffe', name: 'Ballaststoffe',    kurz: 'Ballaststoffe', einheit: 'g',    gruppe: 'ernaehrung', feld: 'ballaststoffe_g',    stellen: 1 },
+  { id: 'alkohol',     name: 'Alkohol',            kurz: 'Alkohol',       einheit: 'g',    gruppe: 'ernaehrung', feld: 'alkohol_g',          stellen: 1 },
+  /* Gruppe 3 — Kalorien pro Mahlzeit-Typ (live aus 03) */
+  { id: 'kcal_morgens',  name: 'Morgens (kcal)',  kurz: 'Morgens',  einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_morgens',  stellen: 0 },
+  { id: 'kcal_mittags',  name: 'Mittags (kcal)',  kurz: 'Mittags',  einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_mittags',  stellen: 0 },
+  { id: 'kcal_abends',   name: 'Abends (kcal)',   kurz: 'Abends',   einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_abends',   stellen: 0 },
+  { id: 'kcal_zwischen', name: 'Zwischen (kcal)', kurz: 'Zwischen', einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_zwischen', stellen: 0 },
+  { id: 'kcal_naschen',  name: 'Naschen (kcal)',  kurz: 'Naschen',  einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_naschen',  stellen: 0 },
+  { id: 'kcal_trinken',  name: 'Trinken (kcal)',  kurz: 'Trinken',  einheit: 'kcal', gruppe: 'mahlzeit', feld: 'kcal_trinken',  stellen: 0 },
+];
+
+/* Zuordnung Mahlzeit-Typ → Aggregat-Feld (fuer kcal je Typ). */
+const MAHLZEIT_TYP_ZU_AGGREGAT = {
+  'Morgens': 'kcal_morgens', 'Mittags': 'kcal_mittags', 'Abends': 'kcal_abends',
+  'Zwischen': 'kcal_zwischen', 'Naschen': 'kcal_naschen', 'Trinken': 'kcal_trinken',
+};
+
+/* Spalten der abgeleiteten Datei 06_Tagesaggregate.csv (Excel-Bruecke).
+   Wird bei jedem Sync komplett neu erzeugt — nie gemerged, kein Backup. */
+const CSV_SPALTEN_06 = ['datum', 'kcal_gesamt', 'trinkmenge_ml', 'eiweiss_g', 'kohlenhydrate_g', 'zucker_g', 'fett_g', 'fett_gesaettigt_g', 'fett_ungesaettigt_g', 'salz_g', 'ballaststoffe_g', 'alkohol_g', 'kcal_morgens', 'kcal_mittags', 'kcal_abends', 'kcal_zwischen', 'kcal_naschen', 'kcal_trinken'];
+
+/* ----------------------------------------------------------------
    2. INDEXEDDB-HILFSFUNKTIONEN
 
    Promise-basierte Wrapper um die ereignisgesteuerte IndexedDB-API.
@@ -1342,6 +1404,9 @@ const ANSICHT_ZU_TAB = {
   'ansicht-werkzeug-alkohol':        'mehr',
   'ansicht-werkzeug-bruehe':         'mehr',
   'ansicht-werkzeug-garfaktor-tag':  'mehr',
+  /* Verlauf (Phase E) — ebenfalls unter dem Mehr-Tab */
+  'ansicht-verlauf':                 'mehr',
+  'ansicht-verlauf-werte':           'mehr',
 };
 
 /* Bildschirme, bei denen die untere Tab-Leiste sichtbar ist. */
@@ -1484,6 +1549,14 @@ async function routeVerarbeiten() {
       /* Ein bestimmter Rechner; parameter = rezept|alkohol|bruehe|
          garfaktor-tag */
       await werkzeugOeffnen(parameter);
+      break;
+    case 'verlauf':
+      ansichtAnzeigen('ansicht-verlauf');
+      await verlaufLaden();
+      break;
+    case 'verlauf-werte':
+      ansichtAnzeigen('ansicht-verlauf-werte');
+      await verlaufWerteLaden();
       break;
     case 'lebensmittel-detail':
       if (parameter) {
@@ -3209,6 +3282,11 @@ async function vollSync(ausloeser) {
 
     await syncDateiEigengerichte(metaMap, syncMeta);
 
+    /* Phase E: NACH dem 03-Merge die abgeleitete 06_Tagesaggregate.csv
+       aus dem fertigen Stand komplett neu erzeugen und ueberschreiben
+       (nie mergen, kein Backup, Download wird ignoriert). */
+    await syncDateiTagesaggregate(syncMeta);
+
     /* Sync-Metadaten + Zeitstempel sichern */
     if (letzteSicherungMs) syncMeta.letzte_sicherung = letzteSicherungMs;
     await syncMetaSpeichern(syncMeta);
@@ -4091,6 +4169,707 @@ function ereignisWerkzeugeRegistrieren() {
   anClick('eg-picker-abbrechen', () => egPickerSchliessen());
 }
 
+/* ================================================================
+   7e. VERLAUF-DIAGRAMM (Phase E)
+
+   Neue Ansicht "Verlauf" im Mehr-Bereich: bis zu 6 Werte gleichzeitig
+   ueber die Zeit, NORMALISIERT dargestellt (jede Kurve auf ihre eigene
+   Min-Max-Spanne skaliert; Y-Achse zeigt nur tief/mittel/hoch, echte
+   Werte per Antippen). Die Tageswerte werden LIVE aus den lokalen
+   Einzeleintraegen (03) und Vitaldaten (04) berechnet — dieselbe
+   Aggregations-Funktion erzeugt auch die Excel-Bruecke
+   06_Tagesaggregate.csv (siehe unten).
+   ================================================================ */
+
+/* -- Zustand ----------------------------------------------------- */
+
+let verlaufZeitraum = 'monat';        /* 'woche'|'monat'|'3monate'|'alles'|'frei' */
+let verlaufVon = '';                  /* freier Zeitraum: Von-Datum (ISO) */
+let verlaufBis = '';                  /* freier Zeitraum: Bis-Datum (ISO) */
+/* Aktive Werte in Aktivierungs-Reihenfolge (FIFO). Jeder Eintrag
+   {id, farbe} — die Farbe wird beim Aktivieren vergeben (erste freie
+   aus VERLAUF_FARBEN) und bleibt stabil, solange der Wert aktiv ist. */
+let verlaufAktive = [
+  { id: 'gewicht', farbe: VERLAUF_FARBEN[0] },
+  { id: 'kcal',    farbe: VERLAUF_FARBEN[1] },
+  { id: 'bd_sys',  farbe: VERLAUF_FARBEN[2] },
+];
+let verlaufVollbildManuell = false;   /* Rueckfallebene ohne Dreh-Erkennung */
+let verlaufDaten = null;              /* zuletzt gesammelte Diagramm-Daten */
+let verlaufTapDatum = null;           /* angetippter Tag (ISO) oder null */
+let verlaufTapPunkte = [];            /* [{x, datum}] fuer die Tap-Treffersuche */
+
+/* Orientierungs-Erkennung: wird das Geraet quer gehalten? */
+const verlaufQuerMedia = window.matchMedia('(orientation: landscape)');
+
+/* -- Einstellungen laden/speichern (meta-Store) ------------------ */
+
+async function verlaufEinstellungenLaden() {
+  const m = await dbLesen('meta', 'verlauf');
+  if (!m) return;
+  if (m.zeitraum) verlaufZeitraum = m.zeitraum;
+  verlaufVon = m.von || '';
+  verlaufBis = m.bis || '';
+  if (Array.isArray(m.aktive)) {
+    /* Nur bekannte Werte uebernehmen (falls sich der Katalog aendert) */
+    verlaufAktive = m.aktive.filter(a => a && VERLAUF_WERTE.some(w => w.id === a.id));
+  }
+}
+
+async function verlaufEinstellungenSpeichern() {
+  await dbSchreiben('meta', {
+    schluessel: 'verlauf',
+    zeitraum: verlaufZeitraum,
+    von: verlaufVon,
+    bis: verlaufBis,
+    aktive: verlaufAktive,
+  });
+}
+
+/* -- Datums-Helfer ------------------------------------------------ */
+
+/**
+ * Verschiebt ein ISO-Datum um n Tage (lokale Zeit, mittags gebildet,
+ * damit keine Zeitzonen-Kante den Tag kippt).
+ */
+function datumPlusTage(iso, tage) {
+  const t = iso.split('-');
+  const d = new Date(Number(t[0]), Number(t[1]) - 1, Number(t[2]) + tage, 12, 0, 0);
+  return `${d.getFullYear()}-${zweiStellen(d.getMonth() + 1)}-${zweiStellen(d.getDate())}`;
+}
+
+/* Kurze deutsche Monatsnamen fuer die Achsen-/Tap-Beschriftung. */
+const MONATE_KURZ = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sep.', 'Okt.', 'Nov.', 'Dez.'];
+
+/**
+ * Formatiert ein ISO-Datum lesbar: "18. Juni" bzw. "18. Juni 2026".
+ */
+function datumLesbar(iso, mitJahr) {
+  const t = iso.split('-');
+  return `${Number(t[2])}. ${MONATE_KURZ[Number(t[1]) - 1]}${mitJahr ? ' ' + t[0] : ''}`;
+}
+
+/* -- Tages-Aggregation (Kern: fuer Diagramm UND 06-Datei) --------- */
+
+/**
+ * Aggregiert alle Erfassungen (03) zu Tageswerten: Tagessummen aller
+ * Naehrwerte, Trinkmenge und kcal je Mahlzeit-Typ. Nur Tage, an denen
+ * es Erfassungen gibt, bekommen einen Eintrag.
+ * Eigengerichte nutzen die gecachten Pro-100g-Werte (voller Satz aus
+ * Phase D); Lebensmittel ihre Stammdaten-Werte.
+ * @returns {Promise<Map<string, Object>>} - Map datum → Aggregat
+ */
+async function tagesAggregateBerechnen() {
+  const erfassungen = await dbAllesLesen('erfassung');
+  const lmMap = await lebensmittelMapHolen();
+  const egMap = await gerichteMapHolen();
+
+  const tage = new Map();
+  const leeresAggregat = (datum) => ({
+    datum,
+    kcal_gesamt: 0, trinkmenge_ml: 0,
+    eiweiss_g: 0, kohlenhydrate_g: 0, zucker_g: 0, fett_g: 0,
+    fett_gesaettigt_g: 0, fett_ungesaettigt_g: 0, salz_g: 0,
+    ballaststoffe_g: 0, alkohol_g: 0,
+    kcal_morgens: 0, kcal_mittags: 0, kcal_abends: 0,
+    kcal_zwischen: 0, kcal_naschen: 0, kcal_trinken: 0,
+  });
+
+  for (const e of erfassungen) {
+    if (!e.datum) continue;
+    if (!tage.has(e.datum)) tage.set(e.datum, leeresAggregat(e.datum));
+    const tag = tage.get(e.datum);
+    const faktor = (Number(e.menge_g) || 0) / 100;
+
+    /* Naehrwerte pro 100 g der Quelle (Lebensmittel oder Eigengericht) */
+    let kcal100 = 0;
+    let n100 = null;
+    if (e.ist_eigengericht) {
+      const g = egMap.get(e.eigengericht_id);
+      if (g) {
+        kcal100 = Number(g.kcal_pro_100g_berechnet) || 0;
+        n100 = {
+          eiweiss_g:           Number(g.eiweiss_pro_100g) || 0,
+          kohlenhydrate_g:     Number(g.kh_pro_100g) || 0,
+          zucker_g:            Number(g.zucker_pro_100g) || 0,
+          fett_g:              Number(g.fett_pro_100g) || 0,
+          fett_gesaettigt_g:   Number(g.fett_gesaettigt_pro_100g) || 0,
+          fett_ungesaettigt_g: Number(g.fett_ungesaettigt_pro_100g) || 0,
+          salz_g:              Number(g.salz_pro_100g) || 0,
+          ballaststoffe_g:     Number(g.ballaststoffe_pro_100g) || 0,
+          alkohol_g:           Number(g.alkohol_pro_100g) || 0,
+        };
+      }
+    } else {
+      const lm = lmMap.get(e.lebensmittel_id);
+      if (lm) {
+        kcal100 = deutscheZahlParsen(lm.kcal_pro_100g);
+        n100 = {
+          eiweiss_g:           deutscheZahlParsen(lm.eiweiss_g),
+          kohlenhydrate_g:     deutscheZahlParsen(lm.kohlenhydrate_g),
+          zucker_g:            deutscheZahlParsen(lm.zucker_g),
+          fett_g:              deutscheZahlParsen(lm.fett_g),
+          fett_gesaettigt_g:   deutscheZahlParsen(lm.fett_gesaettigt_g),
+          fett_ungesaettigt_g: deutscheZahlParsen(lm.fett_ungesaettigt_g),
+          salz_g:              deutscheZahlParsen(lm.salz_g),
+          ballaststoffe_g:     deutscheZahlParsen(lm.ballaststoffe_g),
+          alkohol_g:           deutscheZahlParsen(lm.alkohol_g),
+        };
+      }
+    }
+
+    const kcal = faktor * kcal100;
+    tag.kcal_gesamt += kcal;
+    if (n100) {
+      for (const feld of Object.keys(n100)) tag[feld] += faktor * n100[feld];
+    }
+
+    /* kcal je Mahlzeit-Typ */
+    const typFeld = MAHLZEIT_TYP_ZU_AGGREGAT[e.mahlzeit_typ];
+    if (typFeld) tag[typFeld] += kcal;
+
+    /* Trinkmenge: Summe der Trinken-Mengen (1 ml ≈ 1 g) */
+    if (e.mahlzeit_typ === 'Trinken') tag.trinkmenge_ml += Number(e.menge_g) || 0;
+  }
+
+  return tage;
+}
+
+/* -- Diagramm-Daten sammeln (Zeitraum + Reihen der aktiven Werte) - */
+
+/**
+ * Bestimmt den Zeitraum und baut fuer jeden aktiven Wert die Zeitreihe
+ * (nur Tage mit vorhandenem Wert; Luecken werden im Diagramm
+ * durchgezogen). Vitalwerte gelten nur als vorhanden, wenn das Feld
+ * gefuellt und numerisch ist; Ernaehrungswerte an jedem Tag mit
+ * Erfassungen (auch 0 ist dann ein echter Wert).
+ */
+async function verlaufDatenSammeln() {
+  const vitaldaten = await dbAllesLesen('vitaldaten');
+  const aggregate = await tagesAggregateBerechnen();
+  const vitalMap = new Map(vitaldaten.map(v => [v.datum, v]));
+
+  /* Zeitraum-Grenzen */
+  const heute = heutigesDatum();
+  let von, bis = heute;
+  switch (verlaufZeitraum) {
+    case 'woche':   von = datumPlusTage(heute, -6); break;
+    case '3monate': von = datumPlusTage(heute, -89); break;
+    case 'alles': {
+      let fruehestes = heute;
+      for (const d of aggregate.keys()) if (d && d < fruehestes) fruehestes = d;
+      for (const v of vitaldaten) if (v.datum && v.datum < fruehestes) fruehestes = v.datum;
+      von = fruehestes;
+      break;
+    }
+    case 'frei': {
+      von = verlaufVon || datumPlusTage(heute, -29);
+      bis = verlaufBis || heute;
+      if (bis < von) { const tausch = von; von = bis; bis = tausch; }
+      break;
+    }
+    default: von = datumPlusTage(heute, -29);   /* monat */
+  }
+
+  /* Liste aller Tage im Zeitraum (X-Positionen nach Datum, nicht nach
+     Messpunkt-Index — so bleiben Luecken raeumlich sichtbar). */
+  const tagListe = [];
+  let lauf = von, schutz = 0;
+  while (lauf <= bis && schutz < 4000) {
+    tagListe.push(lauf);
+    lauf = datumPlusTage(lauf, 1);
+    schutz++;
+  }
+
+  /* Zeitreihen der aktiven Werte */
+  const reihen = new Map();
+  for (const aktiv of verlaufAktive) {
+    const def = VERLAUF_WERTE.find(w => w.id === aktiv.id);
+    if (!def) continue;
+    const punkte = [];
+    tagListe.forEach((datum, index) => {
+      if (def.gruppe === 'vital') {
+        const satz = vitalMap.get(datum);
+        if (!satz) return;
+        const roh = String(satz[def.feld] === undefined || satz[def.feld] === null ? '' : satz[def.feld]).trim();
+        if (roh === '') return;
+        const zahl = parseFloat(roh.replace(',', '.'));
+        if (isNaN(zahl)) return;
+        punkte.push({ index, datum, wert: zahl, anzeige: roh });
+      } else {
+        const agg = aggregate.get(datum);
+        if (!agg) return;
+        const zahl = agg[def.feld] || 0;
+        const anzeige = (def.stellen === 0) ? String(Math.round(zahl)) : zahlDe(zahl, def.stellen);
+        punkte.push({ index, datum, wert: zahl, anzeige });
+      }
+    });
+    reihen.set(aktiv.id, punkte);
+  }
+
+  return { von, bis, tagListe, reihen };
+}
+
+/* -- Werte aktivieren/deaktivieren (FIFO, Farbvergabe Variante B) - */
+
+/**
+ * Schaltet einen Wert an oder aus. Beim Aktivieren bekommt er die
+ * erste freie Farbe; ist schon das Maximum aktiv, fliegt der am
+ * laengsten aktive Wert heraus (FIFO).
+ */
+async function verlaufWertUmschalten(wertId) {
+  const index = verlaufAktive.findIndex(a => a.id === wertId);
+  if (index >= 0) {
+    verlaufAktive.splice(index, 1);
+  } else {
+    const farbe = VERLAUF_FARBEN.find(f => !verlaufAktive.some(a => a.farbe === f));
+    verlaufAktive.push({ id: wertId, farbe });
+    if (verlaufAktive.length > VERLAUF_MAX_AKTIV) verlaufAktive.shift();
+  }
+  verlaufDaten = null;      /* Reihen muessen neu gesammelt werden */
+  verlaufTapDatum = null;
+  await verlaufEinstellungenSpeichern();
+}
+
+/* -- Renderer: Hochformat-Bildschirm ------------------------------ */
+
+/**
+ * Baut eine Wert-Zeile (Farbpunkt + Name + Haken) fuer die Listen im
+ * Hochformat und in der Werte-Auswahl.
+ */
+function verlaufWertZeileHtml(def, aktivEintrag) {
+  const farbe = aktivEintrag ? aktivEintrag.farbe : 'var(--text-gedaempft)';
+  const haken = aktivEintrag
+    ? '<span class="verlauf-haken an">✓</span>'
+    : '<span class="verlauf-haken"></span>';
+  return `<div class="verlauf-wert-reihe" data-wert="${def.id}" tabindex="0">
+    <span class="verlauf-farbpunkt" style="background:${farbe}"></span>
+    <span class="verlauf-wert-name">${escapeHtml(def.name)}</span>
+    ${haken}
+  </div>`;
+}
+
+/**
+ * Rendert den Hochformat-Teil: Zeitraum-Chips, Von/Bis, Liste der
+ * aktiven Werte.
+ */
+function verlaufHochRendern() {
+  /* Zeitraum-Chips markieren */
+  document.querySelectorAll('#verlauf-zeitraum-chips .zeitraum-knopf').forEach(k => {
+    k.classList.toggle('aktiv', k.dataset.zeitraum === verlaufZeitraum);
+  });
+  document.getElementById('verlauf-von').value = verlaufVon;
+  document.getElementById('verlauf-bis').value = verlaufBis;
+
+  /* Aktive Werte */
+  document.getElementById('verlauf-aktive-titel').textContent =
+    `Ausgewählte Werte (${verlaufAktive.length} von ${VERLAUF_MAX_AKTIV})`;
+  const listeEl = document.getElementById('verlauf-aktive-liste');
+  if (verlaufAktive.length === 0) {
+    listeEl.innerHTML = '<div class="leerer-zustand">Keine Werte gewählt. Tippe auf „Weitere Werte wählen".</div>';
+  } else {
+    listeEl.innerHTML = verlaufAktive.map(a => {
+      const def = VERLAUF_WERTE.find(w => w.id === a.id);
+      return def ? verlaufWertZeileHtml(def, a) : '';
+    }).join('');
+    listeEl.querySelectorAll('.verlauf-wert-reihe').forEach(el => {
+      el.addEventListener('click', async () => {
+        await verlaufWertUmschalten(el.dataset.wert);
+        verlaufHochRendern();
+      });
+    });
+  }
+}
+
+/**
+ * Laedt die Verlauf-Ansicht (Route #/verlauf).
+ */
+async function verlaufLaden() {
+  await verlaufEinstellungenLaden();
+  verlaufVollbildManuell = false;
+  verlaufTapDatum = null;
+  verlaufDaten = null;
+  verlaufHochRendern();
+  await verlaufOrientierungAnwenden();
+}
+
+/* -- Renderer: Werte-Auswahl (Route #/verlauf-werte) -------------- */
+
+async function verlaufWerteLaden() {
+  await verlaufEinstellungenLaden();
+  verlaufWerteRendern();
+}
+
+function verlaufWerteRendern() {
+  const gruppen = [
+    { schluessel: 'vital',      titel: 'Vitalwerte' },
+    { schluessel: 'ernaehrung', titel: 'Ernährung (Tagessummen)' },
+    { schluessel: 'mahlzeit',   titel: 'Kalorien pro Mahlzeit-Typ' },
+  ];
+  const teile = [`<div class="verlauf-zaehler">${verlaufAktive.length} von ${VERLAUF_MAX_AKTIV} aktiv</div>`];
+  for (const gruppe of gruppen) {
+    teile.push(`<div class="detail-sektion-titel" style="margin-top:14px">${gruppe.titel}</div>`);
+    for (const def of VERLAUF_WERTE.filter(w => w.gruppe === gruppe.schluessel)) {
+      const aktivEintrag = verlaufAktive.find(a => a.id === def.id);
+      teile.push(verlaufWertZeileHtml(def, aktivEintrag));
+    }
+  }
+  const listeEl = document.getElementById('verlauf-werte-liste');
+  listeEl.innerHTML = teile.join('');
+  listeEl.querySelectorAll('.verlauf-wert-reihe').forEach(el => {
+    el.addEventListener('click', async () => {
+      await verlaufWertUmschalten(el.dataset.wert);
+      verlaufWerteRendern();
+    });
+  });
+}
+
+/* -- Orientierung: hoch (Auswahl) ↔ quer (Vollbild-Diagramm) ------ */
+
+/**
+ * Blendet je nach Geraete-Orientierung (oder manuellem Vollbild) den
+ * Hochformat-Teil oder das Vollbild-Diagramm ein. Beim Wechsel ins
+ * Querformat wird das Diagramm (neu) gerendert.
+ */
+async function verlaufOrientierungAnwenden() {
+  const ansicht = document.getElementById('ansicht-verlauf');
+  if (!ansicht || !ansicht.classList.contains('aktiv')) return;
+
+  const quer = verlaufQuerMedia.matches || verlaufVollbildManuell;
+  document.getElementById('verlauf-hoch').classList.toggle('versteckt', quer);
+  document.getElementById('verlauf-quer').classList.toggle('versteckt', !quer);
+  /* Schliessen-Kreuz nur im manuellen Vollbild (bei echter Drehung
+     dreht man einfach zurueck). */
+  document.getElementById('verlauf-quer-schliessen').classList.toggle('versteckt', !verlaufVollbildManuell);
+
+  if (quer) {
+    if (!verlaufDaten) verlaufDaten = await verlaufDatenSammeln();
+    verlaufDiagrammRendern();
+  }
+}
+
+/* Beschriftung des Zeitraums fuer die Diagramm-Kopfzeile. */
+function verlaufZeitraumText() {
+  switch (verlaufZeitraum) {
+    case 'woche':   return 'letzte Woche';
+    case 'monat':   return 'letzter Monat';
+    case '3monate': return 'letzte 3 Monate';
+    case 'alles':   return 'gesamter Zeitraum';
+    case 'frei':
+      if (verlaufDaten) return `${datumLesbar(verlaufDaten.von, false)} – ${datumLesbar(verlaufDaten.bis, false)}`;
+      return 'freier Zeitraum';
+    default: return '';
+  }
+}
+
+/* -- Das SVG-Diagramm --------------------------------------------- */
+
+/**
+ * Rendert das normalisierte Liniendiagramm als Inline-SVG in den
+ * Querformat-Container. Jede Kurve wird auf ihre eigene Min-Max-Spanne
+ * im Zeitraum skaliert (min unten, max oben; min==max → Mitte). Die
+ * Y-Achse traegt nur tief/mittel/hoch. Antippen setzt eine
+ * Markierungslinie und blendet die echten Werte des Tages ein.
+ */
+function verlaufDiagrammRendern() {
+  const container = document.getElementById('verlauf-svg-container');
+  if (!container || !verlaufDaten) return;
+
+  /* Titelzeile aktualisieren */
+  document.getElementById('verlauf-quer-titel').textContent = 'Verlauf · ' + verlaufZeitraumText();
+
+  /* Masse: Containergroesse messen, damit SVG-Pixel = Bildschirm-Pixel
+     (wichtig fuer die Tap-Koordinaten und Schriftgroessen). */
+  const mass = container.getBoundingClientRect();
+  const B = Math.max(300, Math.floor(mass.width) || 560);
+  const H = Math.max(150, Math.floor(mass.height) || 240);
+  const L = 46, R = 14, O = 14, U = 26;          /* Raender */
+  const plotB = B - L - R, plotH = H - O - U;
+
+  const { tagListe, reihen } = verlaufDaten;
+  const n = tagListe.length;
+  const xFuerIndex = i => (n <= 1) ? L + plotB / 2 : L + (i / (n - 1)) * plotB;
+  const punktRadius = n > 90 ? 1.5 : 3;
+
+  const teile = [];
+
+  /* Achsen und Hilfslinien (tief/mittel/hoch) */
+  teile.push(`<line x1="${L}" y1="${O}" x2="${L}" y2="${O + plotH}" stroke="var(--border-stark)" stroke-width="1"/>`);
+  teile.push(`<line x1="${L}" y1="${O + plotH}" x2="${B - R}" y2="${O + plotH}" stroke="var(--border-stark)" stroke-width="1"/>`);
+  teile.push(`<line x1="${L}" y1="${O}" x2="${B - R}" y2="${O}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 3"/>`);
+  teile.push(`<line x1="${L}" y1="${O + plotH / 2}" x2="${B - R}" y2="${O + plotH / 2}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 3"/>`);
+  teile.push(`<text x="${L - 6}" y="${O + 4}" text-anchor="end" class="verlauf-achse-text">hoch</text>`);
+  teile.push(`<text x="${L - 6}" y="${O + plotH / 2 + 3}" text-anchor="end" class="verlauf-achse-text">mittel</text>`);
+  teile.push(`<text x="${L - 6}" y="${O + plotH + 3}" text-anchor="end" class="verlauf-achse-text">tief</text>`);
+
+  /* X-Beschriftung: erster, mittlerer, letzter Tag */
+  if (n > 0) {
+    const yText = H - 8;
+    teile.push(`<text x="${L}" y="${yText}" class="verlauf-achse-text">${datumLesbar(tagListe[0], false)}</text>`);
+    if (n > 2) {
+      teile.push(`<text x="${xFuerIndex(Math.floor((n - 1) / 2))}" y="${yText}" text-anchor="middle" class="verlauf-achse-text">${datumLesbar(tagListe[Math.floor((n - 1) / 2)], false)}</text>`);
+    }
+    if (n > 1) {
+      teile.push(`<text x="${B - R}" y="${yText}" text-anchor="end" class="verlauf-achse-text">${datumLesbar(tagListe[n - 1], false)}</text>`);
+    }
+  }
+
+  /* Kurven: pro aktivem Wert normalisieren und zeichnen. Luecken
+     (Tage ohne Messung) werden durchgezogen, weil nur die vorhandenen
+     Punkte verbunden werden. */
+  const tageMitPunkt = new Set();
+  for (const aktiv of verlaufAktive) {
+    const punkte = reihen.get(aktiv.id) || [];
+    if (punkte.length === 0) continue;
+    const werte = punkte.map(p => p.wert);
+    const min = Math.min(...werte);
+    const max = Math.max(...werte);
+    const yFuer = w => {
+      const norm = (max > min) ? (w - min) / (max - min) : 0.5;   /* min==max → Mitte */
+      return O + (1 - norm) * plotH;
+    };
+    const koordinaten = punkte.map(p => `${xFuerIndex(p.index).toFixed(1)},${yFuer(p.wert).toFixed(1)}`);
+    if (punkte.length > 1) {
+      teile.push(`<polyline fill="none" stroke="${aktiv.farbe}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${koordinaten.join(' ')}"/>`);
+    }
+    for (const p of punkte) {
+      const istTap = p.datum === verlaufTapDatum;
+      teile.push(`<circle cx="${xFuerIndex(p.index).toFixed(1)}" cy="${yFuer(p.wert).toFixed(1)}" r="${istTap ? 5 : punktRadius}" fill="${aktiv.farbe}"${istTap ? ' stroke="var(--flaeche)" stroke-width="2"' : ''}/>`);
+      tageMitPunkt.add(p.datum);
+    }
+  }
+
+  /* Tap-Treffer: nur Tage mit mindestens einem Datenpunkt */
+  verlaufTapPunkte = tagListe
+    .map((datum, i) => ({ datum, x: xFuerIndex(i) }))
+    .filter(p => tageMitPunkt.has(p.datum));
+
+  /* Markierungslinie + Werte-Feld fuer den angetippten Tag */
+  if (verlaufTapDatum && tageMitPunkt.has(verlaufTapDatum)) {
+    const tapIndex = tagListe.indexOf(verlaufTapDatum);
+    const tapX = xFuerIndex(tapIndex);
+    teile.push(`<line x1="${tapX.toFixed(1)}" y1="${O}" x2="${tapX.toFixed(1)}" y2="${O + plotH}" stroke="var(--border-akzent)" stroke-width="1" stroke-dasharray="3 2"/>`);
+
+    /* Echte Werte des Tages einsammeln */
+    const eintraege = [];
+    for (const aktiv of verlaufAktive) {
+      const def = VERLAUF_WERTE.find(w => w.id === aktiv.id);
+      const punkt = (reihen.get(aktiv.id) || []).find(p => p.datum === verlaufTapDatum);
+      if (!def || !punkt) continue;
+      eintraege.push({ farbe: aktiv.farbe, text: `${def.kurz} ${punkt.anzeige}${def.einheit ? ' ' + def.einheit : ''}` });
+    }
+
+    if (eintraege.length > 0) {
+      const titel = datumLesbar(verlaufTapDatum, true);
+      const laengster = Math.max(titel.length, ...eintraege.map(e => e.text.length));
+      const boxB = Math.min(B - 20, laengster * 6.3 + 36);
+      const boxH = 26 + eintraege.length * 17 + 4;
+      const boxX = (tapX + 12 + boxB <= B - R) ? tapX + 12 : Math.max(4, tapX - 12 - boxB);
+      const boxY = O + 4;
+      teile.push(`<rect x="${boxX}" y="${boxY}" width="${boxB}" height="${boxH}" rx="8" fill="var(--flaeche)" stroke="var(--border-stark)" stroke-width="0.5"/>`);
+      teile.push(`<text x="${boxX + 12}" y="${boxY + 17}" class="verlauf-tap-titel">${escapeHtml(titel)}</text>`);
+      eintraege.forEach((e, i) => {
+        const y = boxY + 34 + i * 17;
+        teile.push(`<circle cx="${boxX + 15}" cy="${y - 4}" r="4" fill="${e.farbe}"/>`);
+        teile.push(`<text x="${boxX + 25}" y="${y}" class="verlauf-tap-text">${escapeHtml(e.text)}</text>`);
+      });
+    }
+  }
+
+  /* Leerer Zustand */
+  if (tageMitPunkt.size === 0) {
+    teile.push(`<text x="${B / 2}" y="${O + plotH / 2}" text-anchor="middle" class="verlauf-achse-text">Keine Daten im gewählten Zeitraum</text>`);
+  }
+
+  container.innerHTML =
+    `<svg width="${B}" height="${H}" viewBox="0 0 ${B} ${H}" role="img"><title>Verlaufsdiagramm (normalisiert)</title>${teile.join('')}</svg>`;
+  container.querySelector('svg').addEventListener('click', verlaufDiagrammAngetippt);
+
+  /* Legende unter dem Diagramm */
+  const legendeEl = document.getElementById('verlauf-legende');
+  legendeEl.innerHTML = verlaufAktive.map(a => {
+    const def = VERLAUF_WERTE.find(w => w.id === a.id);
+    return def ? `<span class="verlauf-legende-eintrag"><span class="punkt" style="background:${a.farbe}"></span>${escapeHtml(def.name)}</span>` : '';
+  }).join('');
+}
+
+/**
+ * Tap auf das Diagramm: sucht den naechstliegenden Tag mit Datenpunkt
+ * zur X-Position (performant: eine lineare Suche ueber die Tap-Punkte
+ * statt Treffer-Flaechen pro Punkt). Erneutes Antippen desselben Tags
+ * blendet die Markierung wieder aus.
+ */
+function verlaufDiagrammAngetippt(ereignis) {
+  const svgEl = ereignis.currentTarget;
+  const rahmen = svgEl.getBoundingClientRect();
+  const x = ereignis.clientX - rahmen.left;
+
+  let bester = null;
+  let besteDistanz = Infinity;
+  for (const p of verlaufTapPunkte) {
+    const distanz = Math.abs(p.x - x);
+    if (distanz < besteDistanz) { besteDistanz = distanz; bester = p; }
+  }
+  if (!bester) return;
+  verlaufTapDatum = (verlaufTapDatum === bester.datum) ? null : bester.datum;
+  verlaufDiagrammRendern();
+}
+
+/* -- Nachruestung: voller Naehrwert-Satz fuer Bestands-Gerichte --- */
+
+/**
+ * Einmalige Nachruestung: Eigengerichte, die noch mit dem alten
+ * 5-Werte-Cache (vor Phase D) in der Datenbank liegen, bekommen den
+ * vollen Naehrwert-Satz aus ihren Zutaten nachgerechnet. Noetig, damit
+ * die Tages-Aggregation (Zucker, Ballaststoffe, Alkohol …) auch fuer
+ * Eigengericht-Eintraege stimmt, ohne dass der Nutzer "Datenbank neu
+ * aufbauen" druecken muss. Laeuft einmal, merkt sich das per Flag.
+ */
+async function eigengerichteVollenSatzSicherstellen() {
+  const merker = await dbLesen('meta', 'migrationen');
+  if (merker && merker.eg_voller_satz) return;
+
+  const gerichte = await dbAllesLesen('eigengerichte');
+  const lmMap = await lebensmittelMapHolen();
+  for (const gericht of gerichte) {
+    if (gericht.zucker_pro_100g !== undefined) continue;   /* schon voll */
+    const zutaten = await dbIndexLesen('zutaten', 'nach_gericht_id', gericht.gericht_id);
+    const berechnete = gerichtNaehrwerteBerechnen(zutaten, lmMap, deutscheZahlParsen(gericht.gericht_endgewicht_g));
+    gerichtNaehrwerteZuweisen(gericht, berechnete);
+    /* sync_status bleibt unangetastet — die Cache-Felder stehen nicht in der CSV */
+    await dbSchreiben('eigengerichte', gericht);
+  }
+  gerichteCache = null;
+  await dbSchreiben('meta', { ...(merker || {}), schluessel: 'migrationen', eg_voller_satz: true });
+}
+
+/* -- 06_Tagesaggregate.csv (Excel-Bruecke) ------------------------ */
+
+/**
+ * Erzeugt die komplette 06-Datei aus dem aktuellen 03-Stand: eine
+ * Zeile pro Tag mit Erfassungen, deutsche Notation. Rundung: kcal und
+ * Trinkmenge ganzzahlig, Salz 2 Nachkommastellen, uebrige Werte 1.
+ */
+async function tagesaggregateCsvErzeugen() {
+  const aggregate = await tagesAggregateBerechnen();
+  const zeilen = Array.from(aggregate.values())
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+    .map(t => ({
+      datum:               t.datum,
+      kcal_gesamt:         String(Math.round(t.kcal_gesamt)),
+      trinkmenge_ml:       String(Math.round(t.trinkmenge_ml)),
+      eiweiss_g:           zahlNachDeutsch(t.eiweiss_g, 1),
+      kohlenhydrate_g:     zahlNachDeutsch(t.kohlenhydrate_g, 1),
+      zucker_g:            zahlNachDeutsch(t.zucker_g, 1),
+      fett_g:              zahlNachDeutsch(t.fett_g, 1),
+      fett_gesaettigt_g:   zahlNachDeutsch(t.fett_gesaettigt_g, 1),
+      fett_ungesaettigt_g: zahlNachDeutsch(t.fett_ungesaettigt_g, 1),
+      salz_g:              zahlNachDeutsch(t.salz_g, 2),
+      ballaststoffe_g:     zahlNachDeutsch(t.ballaststoffe_g, 1),
+      alkohol_g:           zahlNachDeutsch(t.alkohol_g, 1),
+      kcal_morgens:        String(Math.round(t.kcal_morgens)),
+      kcal_mittags:        String(Math.round(t.kcal_mittags)),
+      kcal_abends:         String(Math.round(t.kcal_abends)),
+      kcal_zwischen:       String(Math.round(t.kcal_zwischen)),
+      kcal_naschen:        String(Math.round(t.kcal_naschen)),
+      kcal_trinken:        String(Math.round(t.kcal_trinken)),
+    }));
+  return csvSchreiben(CSV_SPALTEN_06, zeilen);
+}
+
+/**
+ * Einfacher Text-Hash (djb2 + Laenge) — reicht, um unnoetige
+ * 06-Uploads zu erkennen (gleicher Inhalt wie beim letzten Mal).
+ */
+function textHash(text) {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) {
+    h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  }
+  return h + '_' + text.length;
+}
+
+/**
+ * Sync-Baustein fuer 06: erzeugt die Datei KOMPLETT NEU aus dem
+ * aktuellen (gemergten) 03-Stand und ueberschreibt sie in Dropbox.
+ * Bewusst anders als die anderen Dateien: NIE mergen, beim Download
+ * IGNORIEREN, KEIN Backup (jederzeit aus 03 reproduzierbar).
+ * Hochgeladen wird nur, wenn sich der Inhalt gegenueber dem zuletzt
+ * erzeugten Stand geaendert hat.
+ */
+async function syncDateiTagesaggregate(syncMeta) {
+  const csv = await tagesaggregateCsvErzeugen();
+  const hash = textHash(csv);
+  if (syncMeta.aggregat_hash === hash) return;   /* unveraendert — kein Upload */
+  await dropboxDateiHochladen('/06_Tagesaggregate.csv', csv);
+  syncMeta.aggregat_hash = hash;
+}
+
+/**
+ * Registriert die Verlauf-Ereignisse (einmalig beim App-Start).
+ */
+function ereignisVerlaufRegistrieren() {
+  const anClick = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+
+  /* Einstieg aus den Einstellungen + Zurueck-Navigation */
+  anClick('knopf-verlauf', () => navigieren('verlauf'));
+  anClick('verlauf-zurueck', () => navigieren('einstellungen'));
+  anClick('verlauf-werte-zurueck', () => navigieren('verlauf'));
+  anClick('verlauf-werte-oeffnen', () => navigieren('verlauf-werte'));
+
+  /* Zeitraum-Schnellwahl */
+  document.querySelectorAll('#verlauf-zeitraum-chips .zeitraum-knopf').forEach(knopf => {
+    knopf.addEventListener('click', async () => {
+      verlaufZeitraum = knopf.dataset.zeitraum;
+      verlaufDaten = null;
+      verlaufTapDatum = null;
+      await verlaufEinstellungenSpeichern();
+      verlaufHochRendern();
+    });
+  });
+
+  /* Freier Zeitraum (Von/Bis) */
+  const freiGeaendert = async () => {
+    verlaufVon = document.getElementById('verlauf-von').value;
+    verlaufBis = document.getElementById('verlauf-bis').value;
+    verlaufZeitraum = 'frei';
+    verlaufDaten = null;
+    verlaufTapDatum = null;
+    await verlaufEinstellungenSpeichern();
+    verlaufHochRendern();
+  };
+  const vonEl = document.getElementById('verlauf-von');
+  const bisEl = document.getElementById('verlauf-bis');
+  if (vonEl) vonEl.addEventListener('change', freiGeaendert);
+  if (bisEl) bisEl.addEventListener('change', freiGeaendert);
+
+  /* Manuelles Vollbild (Rueckfallebene ohne Dreh-Erkennung) */
+  anClick('verlauf-vollbild', () => {
+    verlaufVollbildManuell = true;
+    verlaufOrientierungAnwenden();
+  });
+  anClick('verlauf-quer-schliessen', () => {
+    verlaufVollbildManuell = false;
+    verlaufOrientierungAnwenden();
+  });
+
+  /* Orientierungs-Erkennung: beim Drehen automatisch umschalten. Ein
+     kleiner Verzoegerungs-Timer faengt Resize-Gewitter ab und rendert
+     erst, wenn das Layout steht. */
+  let orientierungTimer = null;
+  const orientierungGeaendert = () => {
+    if (orientierungTimer) clearTimeout(orientierungTimer);
+    orientierungTimer = setTimeout(() => {
+      orientierungTimer = null;
+      verlaufOrientierungAnwenden();
+    }, 120);
+  };
+  if (verlaufQuerMedia.addEventListener) {
+    verlaufQuerMedia.addEventListener('change', orientierungGeaendert);
+  }
+  window.addEventListener('resize', orientierungGeaendert);
+}
+
 /* ----------------------------------------------------------------
    8. EREIGNIS-LISTENER UND STEUERUNG
    ---------------------------------------------------------------- */
@@ -4195,6 +4974,9 @@ function ereignisListenerRegistrieren() {
 
   /* --- Werkzeuge (Phase D) --- */
   ereignisWerkzeugeRegistrieren();
+
+  /* --- Verlauf (Phase E) --- */
+  ereignisVerlaufRegistrieren();
 
   /* Suche Lebensmittel */
   document.getElementById('lebensmittel-suche').addEventListener('input', (e) => {
@@ -4338,10 +5120,18 @@ async function appStarten() {
   /* Aktuelle Route rendern */
   await routeVerarbeiten();
 
-  /* Phase F: App-Start-Sync im Hintergrund (blockiert den Start nicht).
-     Holt den aktuellen Dropbox-Stand, merged ihn ein und frischt die
-     Ansicht auf. Fehler werden im Status angezeigt, nicht als Popup. */
-  appStartSyncAnstossen().catch(() => {});
+  /* Phase E: Bestands-Eigengerichte einmalig auf den vollen
+     Naehrwert-Satz nachruesten (noetig fuer korrekte Tages-Aggregate).
+     Laeuft im Hintergrund, aber bewusst VOR dem App-Start-Sync, damit
+     sich beide nicht in die Quere kommen. */
+  eigengerichteVollenSatzSicherstellen()
+    .catch(() => { /* unkritisch — Aggregation nutzt dann 0-Fallbacks */ })
+    .finally(() => {
+      /* Phase F: App-Start-Sync im Hintergrund (blockiert den Start
+         nicht). Holt den aktuellen Dropbox-Stand, merged ihn ein und
+         frischt die Ansicht auf. Fehler erscheinen im Status. */
+      appStartSyncAnstossen().catch(() => {});
+    });
 }
 
 /* App starten sobald der DOM fertig ist */

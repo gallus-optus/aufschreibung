@@ -1500,3 +1500,218 @@ body {
   -webkit-overflow-scrolling: touch;
   margin-bottom: 6px;
 }
+
+/* ================================================================
+   PHASE E — Verlauf-Diagramm
+   ================================================================ */
+
+/* Die beiden Teile der Verlauf-Ansicht (hoch/quer) fuellen die
+   Ansicht jeweils komplett; sichtbar ist immer nur einer. */
+.verlauf-teil {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Zeitraum-Schnellwahl (Woche / Monat / 3 Monate / Alles) */
+.zeitraum-reihe {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.zeitraum-knopf {
+  flex: 1;
+  min-height: 34px;
+  padding: 6px 4px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--flaeche-gedaempft);
+  color: var(--text-sekundaer);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.zeitraum-knopf.aktiv {
+  background: var(--bg-akzent);
+  border-color: var(--border-akzent);
+  color: var(--text-akzent);
+  font-weight: 600;
+}
+
+/* Dreh-Hinweis im Hochformat */
+.verlauf-dreh-hinweis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px 10px;
+  text-align: center;
+  color: var(--text-sekundaer);
+  font-size: 13px;
+}
+
+.verlauf-dreh-hinweis svg {
+  color: var(--text-akzent);
+}
+
+.verlauf-dreh-klein {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+}
+
+.verlauf-dreh-hinweis .knopf-voll-ghost {
+  max-width: 280px;
+}
+
+/* Wert-Zeile (Farbpunkt + Name + Haken) — Hochformat und Auswahl */
+.verlauf-wert-reihe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap-min);
+  padding: 9px 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+}
+
+.verlauf-wert-reihe:active {
+  background: var(--flaeche-gedaempft);
+}
+
+.verlauf-farbpunkt {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.verlauf-wert-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primaer);
+}
+
+.verlauf-haken {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-stark);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: transparent;
+}
+
+.verlauf-haken.an {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: #FFFFFF;
+}
+
+.verlauf-zaehler {
+  font-size: 12px;
+  color: var(--text-gedaempft);
+}
+
+.verlauf-max-hinweis {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  text-align: center;
+  margin-top: 14px;
+}
+
+/* Querformat: Vollbild-Diagramm */
+.verlauf-quer {
+  padding: 8px 12px 6px;
+  background: var(--flaeche);
+}
+
+.verlauf-quer-kopf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 2px 4px 6px;
+}
+
+.verlauf-quer-titel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primaer);
+}
+
+.verlauf-quer-hinweis {
+  font-size: 11px;
+  color: var(--text-gedaempft);
+  margin-left: auto;
+}
+
+.verlauf-quer-x {
+  border: none;
+  background: none;
+  color: var(--text-sekundaer);
+  cursor: pointer;
+  padding: 6px;
+  margin: -6px -6px -6px 0;
+  flex-shrink: 0;
+  display: flex;
+}
+
+/* Der SVG-Container nimmt den restlichen Platz ein; das SVG wird per
+   JavaScript exakt auf diese Groesse gerendert. */
+.verlauf-svg-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Achsen- und Antipp-Texte im SVG */
+.verlauf-achse-text {
+  font-size: 10px;
+  fill: var(--text-gedaempft);
+  font-family: var(--font-sans);
+}
+
+.verlauf-tap-titel {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--text-primaer);
+  font-family: var(--font-sans);
+}
+
+.verlauf-tap-text {
+  font-size: 11px;
+  fill: var(--text-sekundaer);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Legende unter dem Diagramm */
+.verlauf-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 6px 4px 2px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-sekundaer);
+}
+
+.verlauf-legende-eintrag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.verlauf-legende-eintrag .punkt {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
