@@ -3,9 +3,23 @@
 Progressive Web App zur persönlichen Ernährungs- und Vitalwert-Aufzeichnung.
 
 **Live-App:** https://gallus-optus.github.io/aufschreibung/
-**Version:** 0.4 (Phase D)
+**Version:** 0.5 (Phase E)
 
 ## Was die App kann
+
+### Verlauf-Diagramm (Phase E)
+
+- **Verlauf-Ansicht** (Mehr → Verlauf): bis zu 6 Werte gleichzeitig über
+  die Zeit — Vitalwerte und Ernährungs-Tagessummen gemischt
+- **Normalisierte Darstellung**: jede Kurve auf ihre eigene Spanne
+  skaliert, so bleiben Trends vergleichbar; echte Werte per Antippen
+- **Querformat**: Gerät drehen → Vollbild-Diagramm (plus manueller
+  Vollbild-Knopf als Rückfallebene)
+- Zeitraum-Schnellwahl (Woche/Monat/3 Monate/Alles) und freier
+  Von-Bis-Bereich
+- **06_Tagesaggregate.csv**: bei jedem Sync automatisch erzeugte
+  Excel-Brücke mit den Tagessummen (Nährwerte, Trinkmenge, kcal pro
+  Mahlzeit-Typ)
 
 ### Werkzeuge / Rechner (Phase D)
 
